@@ -9,7 +9,7 @@ data/runs/*
 data/samples/*
 *.pbi
 .test_tmp/
-data/input/*
+data/input/OI*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
