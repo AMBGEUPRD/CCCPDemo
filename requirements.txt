@@ -1,2 +1,2 @@
-# Install this project with all core dependencies declared in pyproject.toml
+# Install this project with all runtime dependencies declared in pyproject.toml.
 -e .

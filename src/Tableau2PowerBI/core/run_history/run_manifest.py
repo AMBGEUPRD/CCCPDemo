@@ -21,8 +21,6 @@ class RunManifest:
     token_usage: dict[str, int] = field(default_factory=dict)
     adls_path: str | None = None
     result_id: str | None = None
-    source_format: str = "tableau"
-    metadata_agent_name: str = "tableau_metadata_extractor_agent"
 
     def to_dict(self) -> dict:
         """Serialise the full manifest to a JSON-friendly dict."""
@@ -37,8 +35,6 @@ class RunManifest:
             "token_usage": self.token_usage,
             "adls_path": self.adls_path,
             "result_id": self.result_id,
-            "source_format": self.source_format,
-            "metadata_agent_name": self.metadata_agent_name,
         }
 
     @classmethod
@@ -56,6 +52,4 @@ class RunManifest:
             token_usage=data.get("token_usage", {}),
             adls_path=data.get("adls_path"),
             result_id=data.get("result_id"),
-            source_format=data.get("source_format", "tableau"),
-            metadata_agent_name=data.get("metadata_agent_name", "tableau_metadata_extractor_agent"),
         )

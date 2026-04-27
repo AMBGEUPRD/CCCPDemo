@@ -197,20 +197,10 @@ def _capture_logs_for_sse(min_level: int = logging.DEBUG):
     root_logger = logging.getLogger()
     root_logger.addHandler(handler)
 
-    # If the package logger has propagation disabled (e.g. after setup_logging() is
-    # called), logs from Tableau2PowerBI.* never reach the root logger.  Attach
-    # directly so SSE capture works regardless of propagation state.
-    pkg_logger = logging.getLogger("Tableau2PowerBI")
-    pkg_propagates = pkg_logger.propagate
-    if not pkg_propagates:
-        pkg_logger.addHandler(handler)
-
     try:
         yield log_queue
     finally:
         root_logger.removeHandler(handler)
-        if not pkg_propagates:
-            pkg_logger.removeHandler(handler)
 
 
 def _format_pipeline_result_for_display(result: object) -> str:

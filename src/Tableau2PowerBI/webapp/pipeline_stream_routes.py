@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import os
-import queue
 import tempfile
 import traceback
 import uuid
@@ -20,10 +19,6 @@ from fastapi.responses import StreamingResponse
 
 from Tableau2PowerBI.core.run_history import STAGE_GRAPH, StageStatus
 from Tableau2PowerBI.core.output_dirs import get_output_dir
-from Tableau2PowerBI.core.source_detection import (
-    TABLEAU_METADATA_AGENT,
-    extract_metadata_with_dispatch,
-)
 from Tableau2PowerBI.webapp.runtime import (
     _capture_logs_for_sse,
     _drain_log_queue,
@@ -167,7 +162,7 @@ async def build_analyze_stream_response(
     filename = file.filename or "upload"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_extensions:
-        raise HTTPException(400, f"Unsupported format '{ext}'. Use .twb, .twbx, or .zip (PBIP package)")
+        raise HTTPException(400, f"Unsupported format '{ext}'. Use .twb or .twbx")
 
     file_bytes = await file.read()
     if len(file_bytes) > max_file_size:
@@ -184,40 +179,11 @@ async def build_analyze_stream_response(
         adls_path = None
         result = None
         with _capture_logs_for_sse() as log_queue:
-            def _emit_upload_progress(current_bytes: int, total_bytes: int) -> None:
-                total = max(int(total_bytes or 0), 1)
-                current = max(0, min(int(current_bytes or 0), total))
-                percent = round((current / total) * 100)
-                try:
-                    log_queue.put_nowait(
-                        {
-                            "type": "upload_progress",
-                            "phase": "adls",
-                            "current_bytes": current,
-                            "total_bytes": total,
-                            "percent": percent,
-                            "label": "Uploading to Azure Storage",
-                        }
-                    )
-                except queue.Full:
-                    pass
-
             try:
                 yield _sse_event({"step": 1, "state": "running", "label": "Uploading to secure storage"})
                 logger.info("[Step 1/2] Uploading to secure storage")
                 try:
-                    holder: list[str] = []
-                    async for event in _run_with_logs(
-                        lambda: upload_to_adls_fn(
-                            file_bytes,
-                            filename,
-                            progress_callback=_emit_upload_progress,
-                        ),
-                        log_queue,
-                        holder,
-                    ):
-                        yield event
-                    adls_path = holder[0]
+                    adls_path = await asyncio.to_thread(upload_to_adls_fn, file_bytes, filename)
                     logger.info("Uploaded to ADLS")
                 except Exception as exc:
                     logger.warning("ADLS upload skipped: %s", exc)
@@ -225,14 +191,12 @@ async def build_analyze_stream_response(
                     yield event
                 yield _sse_event({"step": 1, "state": "done"})
 
-                yield _sse_event({"step": 2, "state": "running", "label": "Parsing uploaded source"})
-                logger.info("[Step 2/2] Parsing uploaded source")
+                yield _sse_event({"step": 2, "state": "running", "label": "Parsing Tableau workbook"})
+                logger.info("[Step 2/2] Parsing Tableau workbook")
+                agent = metadata_extractor_cls()
                 holder: list = []
                 async for event in _run_with_logs(
-                    lambda: extract_metadata_with_dispatch(
-                        str(local_path),
-                        settings=get_settings_fn(),
-                    ),
+                    lambda: agent.extract_tableau_metadata(str(local_path)),
                     log_queue,
                     holder,
                 ):
@@ -244,16 +208,11 @@ async def build_analyze_stream_response(
                 yield _sse_event({"step": 2, "state": "done"})
 
                 result_id = f"result_{uuid.uuid4().hex[:12]}"
-                coerced = _format_pipeline_result_for_display(result.result_text)
+                coerced = _format_pipeline_result_for_display(result)
 
                 history = get_history_fn()
-                workbook_name = result.workbook_name
-                manifest = history.create_run(
-                    workbook_name,
-                    filename,
-                    source_format=result.source_format,
-                    metadata_agent_name=result.metadata_agent_name,
-                )
+                workbook_name = Path(filename).stem
+                manifest = history.create_run(workbook_name, filename)
                 manifest.adls_path = adls_path
                 history.update_stage(
                     manifest,
@@ -263,11 +222,13 @@ async def build_analyze_stream_response(
                 )
 
                 settings = get_settings_fn()
-                analysis_out = settings.output_root / result.metadata_agent_name / workbook_name / "analysis_result.json"
+                analysis_out = (
+                    settings.output_root / "tableau_metadata_extractor_agent" / workbook_name / "analysis_result.json"
+                )
                 analysis_out.parent.mkdir(parents=True, exist_ok=True)
                 analysis_out.write_text(coerced, encoding="utf-8")
 
-                history.store_artifacts(manifest, result.metadata_agent_name)
+                history.store_artifacts(manifest, "tableau_metadata_extractor_agent")
                 manifest.result_id = result_id
                 history.save_run(manifest)
 
@@ -277,9 +238,7 @@ async def build_analyze_stream_response(
                     "result_id": result_id,
                     "run_id": manifest.run_id,
                     "filename": filename,
-                    "workbook_name": workbook_name,
                     "adls_path": adls_path,
-                    "source_format": result.source_format,
                     "result": coerced,
                 }
                 yield _sse_event(final_payload)
@@ -291,9 +250,7 @@ async def build_analyze_stream_response(
                             "id": result_id,
                             "run_id": manifest.run_id,
                             "filename": filename,
-                            "workbook_name": workbook_name,
                             "adls_path": adls_path,
-                            "source_format": result.source_format,
                             "result": coerced,
                             "timestamp": _iso_now(),
                         },
@@ -338,7 +295,6 @@ async def build_generate_stream_response(
     body = await request.json()
     metadata_json = body.get("metadata_json", "")
     twb_path = body.get("twb_path", "")
-    workbook_name = body.get("workbook_name", "")
     semantic_model_name = body.get("semantic_model_name", "")
     skip_tdd = body.get("skip_tdd", False)
     run_id = body.get("run_id") or None
@@ -354,18 +310,14 @@ async def build_generate_stream_response(
             )
 
     try:
-        parsed_metadata = json.loads(metadata_json) if isinstance(metadata_json, str) else metadata_json
+        json.loads(metadata_json) if isinstance(metadata_json, str) else metadata_json
     except Exception as exc:
         raise HTTPException(400, "Invalid metadata JSON") from exc
 
-    if not workbook_name:
-        workbook_name = Path(twb_path).stem if twb_path else ""
-    if not workbook_name:
-        raise HTTPException(400, "workbook_name or twb_path is required")
+    if not twb_path:
+        raise HTTPException(400, "twb_path is required to derive the workbook name")
 
-    source_format = (parsed_metadata or {}).get("source_format", "tableau")
-    if source_format == "pbip":
-        raise HTTPException(400, "PBIP uploads are analyze-only in v1. Generation is supported only for Tableau inputs.")
+    workbook_name = Path(twb_path).stem
     semantic_model_name = semantic_model_name or workbook_name
 
     stages_to_run: set[str] | None = None
@@ -425,11 +377,6 @@ async def build_generate_stream_response(
             logger.info("[Generate] Selective: %s", ", ".join(sorted(stages_to_run)) or "(all cached)")
         except Exception as exc:
             logger.warning("Could not load run %s: %s", run_id, exc)
-        if manifest is not None and manifest.source_format == "pbip":
-            raise HTTPException(
-                400,
-                "PBIP uploads are analyze-only in v1. Generation is supported only for Tableau inputs.",
-            )
 
     def _run_metadata_extractor() -> str:
         input_file = Path("data/input") / (manifest.workbook_file if manifest else Path(twb_path).name)
@@ -440,8 +387,7 @@ async def build_generate_stream_response(
         agent = metadata_extractor_cls()
         result = agent.extract_tableau_metadata(str(input_file))
         settings = get_settings_fn()
-        metadata_agent_name = manifest.metadata_agent_name if manifest else TABLEAU_METADATA_AGENT
-        out = settings.output_root / metadata_agent_name / workbook_name / "analysis_result.json"
+        out = settings.output_root / "tableau_metadata_extractor_agent" / workbook_name / "analysis_result.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(result, encoding="utf-8")
         return "Metadata re-extracted"

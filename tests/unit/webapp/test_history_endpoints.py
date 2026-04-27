@@ -5,7 +5,6 @@ fetching a manifest, restoring a run, deleting a run, enriched responses,
 project page route, force_stages validation, and ZIP download.
 """
 
-import json
 import unittest
 from pathlib import Path
 
@@ -482,58 +481,3 @@ class HistoryEndpointTests(unittest.TestCase):
 
                 payload = json.loads(_result_store[result_id][1])
                 self.assertIn("datasources", json.loads(payload["result"]))
-
-    def test_restore_falls_back_to_powerbi_metadata(self):
-        """Restore loads powerbi_metadata.json from PBIP metadata snapshots."""
-        with managed_tempdir() as tmp:
-            settings = _patch_settings(tmp)
-            history = RunHistory(
-                runs_root=settings.runs_root,
-                output_root=settings.output_root,
-            )
-            manifest = history.create_run(
-                "SalesModel",
-                "upload.zip",
-                source_format="pbip",
-                metadata_agent_name="powerbi_metadata_extractor_agent",
-            )
-            out_dir = settings.output_root / "powerbi_metadata_extractor_agent" / "SalesModel"
-            out_dir.mkdir(parents=True)
-            (out_dir / "powerbi_metadata.json").write_text(
-                '{"source_format": "pbip", "pbip": {"project": {"name": "SalesModel"}}}',
-                encoding="utf-8",
-            )
-            history.store_artifacts(manifest, "powerbi_metadata_extractor_agent")
-            history.update_stage(
-                manifest,
-                "metadata_extractor",
-                status=StageStatus.COMPLETED,
-                deterministic=True,
-            )
-            import shutil
-
-            shutil.rmtree(out_dir)
-
-            from unittest.mock import patch
-
-            with (
-                patch(
-                    "Tableau2PowerBI.webapp.history.get_agent_settings",
-                    return_value=settings,
-                ),
-                patch(
-                    "Tableau2PowerBI.webapp.app.get_agent_settings",
-                    return_value=settings,
-                ),
-            ):
-                from Tableau2PowerBI.webapp.app import app, _result_store
-
-                client = TestClient(app)
-                resp = client.post(f"/api/history/SalesModel/{manifest.run_id}/restore")
-                self.assertEqual(resp.status_code, 200)
-                data = resp.json()
-                self.assertEqual(data["source_format"], "pbip")
-
-                payload = json.loads(_result_store[data["result_id"]][1])
-                self.assertEqual(payload["source_format"], "pbip")
-                self.assertEqual(json.loads(payload["result"])["source_format"], "pbip")

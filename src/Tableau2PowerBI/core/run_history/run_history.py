@@ -13,7 +13,6 @@ from pathlib import Path
 from Tableau2PowerBI.core.run_history.run_manifest import RunManifest
 from Tableau2PowerBI.core.run_history.stage_record import StageRecord
 from Tableau2PowerBI.core.run_history.stage_status import StageStatus
-from Tableau2PowerBI.core.source_detection import TABLEAU_METADATA_AGENT
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,6 @@ logger = logging.getLogger(__name__)
 # extracted_data/ is excluded — large and derived from the original .twbx.
 _STORABLE_AGENTS: tuple[str, ...] = (
     "tableau_metadata_extractor_agent",
-    "powerbi_metadata_extractor_agent",
     "tableau_functional_doc_agent",
     "target_technical_doc_agent",
     "pbip_project_skeleton_agent",
@@ -60,14 +58,7 @@ class RunHistory:
 
     # ── CRUD ──────────────────────────────────────────────────────────
 
-    def create_run(
-        self,
-        workbook_name: str,
-        workbook_file: str,
-        *,
-        source_format: str = "tableau",
-        metadata_agent_name: str = TABLEAU_METADATA_AGENT,
-    ) -> RunManifest:
+    def create_run(self, workbook_name: str, workbook_file: str) -> RunManifest:
         """Create a new run manifest and persist it to disk."""
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%f")
         run_id = ts
@@ -78,8 +69,6 @@ class RunHistory:
             workbook_file=workbook_file,
             created_at=now,
             updated_at=now,
-            source_format=source_format,
-            metadata_agent_name=metadata_agent_name,
         )
         self.save_run(manifest)
         logger.info("Created run %s for '%s'", run_id, workbook_name)

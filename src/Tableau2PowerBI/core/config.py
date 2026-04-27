@@ -92,6 +92,7 @@ class AgentSettings:
     """
 
     project_endpoint: str
+    tenant_id: str = ""
     default_model: str = "gpt-4.1"
     openai_api_version: str = "2025-01-01-preview"
     request_timeout_seconds: int = 300
@@ -201,6 +202,7 @@ def get_agent_settings() -> AgentSettings:
 
     return AgentSettings(
         project_endpoint=os.environ.get("PROJECT_ENDPOINT", _DEFAULT_ENDPOINT),
+        tenant_id=os.environ.get("AZURE_TENANT_ID", ""),
         **overrides,  # type: ignore[arg-type]
     )
 

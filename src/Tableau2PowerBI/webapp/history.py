@@ -23,7 +23,6 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from Tableau2PowerBI.core.config import get_agent_settings
 from Tableau2PowerBI.core.run_history import STAGE_GRAPH, RunHistory, RunManifest
-from Tableau2PowerBI.core.source_detection import TABLEAU_METADATA_AGENT
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,6 @@ async def list_workbooks() -> JSONResponse:
                     "completion_pct": round(completed / _TOTAL_STAGES * 100),
                     "total_runs": len(history.list_runs(wb)),
                     "latest_status": status,
-                    "source_format": latest.source_format,
                 }
             )
     return JSONResponse(content=items)
@@ -134,11 +132,9 @@ async def restore_run(workbook_name: str, run_id: str) -> JSONResponse:
         {
             "id": result_id,
             "filename": manifest.workbook_file,
-            "workbook_name": manifest.workbook_name,
             "adls_path": manifest.adls_path,
             "result": analysis_result,
             "run_id": manifest.run_id,
-            "source_format": manifest.source_format,
             "timestamp": manifest.created_at,
             "restored": True,
         },
@@ -174,7 +170,6 @@ async def restore_run(workbook_name: str, run_id: str) -> JSONResponse:
             "run_id": manifest.run_id,
             "workbook_name": workbook_name,
             "adls_path": manifest.adls_path,
-            "source_format": manifest.source_format,
             "redirect_to": redirect_to,
         }
     )
@@ -215,10 +210,8 @@ def _load_stored_analysis(
     settings = get_agent_settings()
 
     # Primary: run-specific snapshot (race-free for concurrent restores).
-    metadata_agent_name = manifest.metadata_agent_name or TABLEAU_METADATA_AGENT
-    run_snapshot = settings.runs_root / manifest.workbook_name / manifest.run_id / metadata_agent_name
-    filenames = ("analysis_result.json", "tableau_metadata.json", "powerbi_metadata.json")
-    for fname in filenames:
+    run_snapshot = settings.runs_root / manifest.workbook_name / manifest.run_id / "tableau_metadata_extractor_agent"
+    for fname in ("analysis_result.json", "tableau_metadata.json"):
         candidate = run_snapshot / fname
         if candidate.is_file():
             try:
@@ -227,8 +220,8 @@ def _load_stored_analysis(
                 logger.debug("Could not read snapshot %s", candidate, exc_info=True)
 
     # Fallback: shared output dir (pre-snapshot runs or missing snapshot).
-    base = settings.output_root / metadata_agent_name / manifest.workbook_name
-    for fname in filenames:
+    base = settings.output_root / "tableau_metadata_extractor_agent" / manifest.workbook_name
+    for fname in ("analysis_result.json", "tableau_metadata.json"):
         candidate = base / fname
         if candidate.is_file():
             try:
@@ -279,10 +272,8 @@ def _enrich_run(manifest: RunManifest) -> dict:
         "stored_artifacts": manifest.stored_artifacts,
         "adls_path": manifest.adls_path,
         "result_id": manifest.result_id,
-        "source_format": manifest.source_format,
-        "metadata_agent_name": manifest.metadata_agent_name,
         "completion_pct": round(completed / _TOTAL_STAGES * 100),
-        "download_available": has_assembler and manifest.source_format == "tableau",
+        "download_available": has_assembler,
     }
 
 

@@ -201,31 +201,8 @@ document.addEventListener('click', function(e) {
   var btn = e.target.closest('.btn-collapse');
   if (!btn) return;
   var card = btn.closest('.section-card');
-  var body = card && card.querySelector('.section-card-body');
-  if (!card || !body) return;
-  var expanded = btn.getAttribute('aria-expanded') !== 'false';
-  btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-  card.classList.toggle('collapsed', expanded);
-  body.hidden = expanded;
+  if (card) card.classList.toggle('collapsed');
 });
-
-function syncCollapsibleSections() {
-  document.querySelectorAll('.section-card .btn-collapse').forEach(function(btn) {
-    var card = btn.closest('.section-card');
-    var body = card && card.querySelector('.section-card-body');
-    if (!card || !body) return;
-    if (!btn.hasAttribute('aria-expanded')) btn.setAttribute('aria-expanded', 'true');
-    var expanded = btn.getAttribute('aria-expanded') !== 'false';
-    card.classList.toggle('collapsed', !expanded);
-    body.hidden = !expanded;
-  });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', syncCollapsibleSections);
-} else {
-  syncCollapsibleSections();
-}
 
 
 /* ── Detect auto-generated / internal Tableau field names ── */
@@ -277,22 +254,8 @@ function esc(s) {
 
 function dtypePill(dt) {
   if (!dt) return '<span class="pill dim">\u2014</span>';
-  const normalised = String(dt).toLowerCase();
-  const map = {
-    string:'string',
-    text:'string',
-    integer:'int',
-    int:'int',
-    int64:'int',
-    real:'int',
-    decimal:'int',
-    double:'int',
-    date:'date',
-    datetime:'date',
-    datetimezone:'date',
-    boolean:'dim'
-  };
-  const cls = map[normalised] || 'dim';
+  const map = { string:'string', integer:'int', real:'int', date:'date', datetime:'date', boolean:'dim' };
+  const cls = map[dt] || 'dim';
   return `<span class="pill ${cls}">${esc(dt)}</span>`;
 }
 

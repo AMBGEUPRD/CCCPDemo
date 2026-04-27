@@ -14,13 +14,13 @@ class CliRunnerTests(unittest.TestCase):
         with (
             patch("sys.argv", ["t2pbi-extract", "Workbook.twbx"]),
             patch("Tableau2PowerBI.cli.run_extraction.setup_logging"),
-            patch("Tableau2PowerBI.cli.run_extraction.extract_metadata_with_dispatch") as extract_fn,
+            patch("Tableau2PowerBI.cli.run_extraction.TableauMetadataExtractorAgent") as agent_cls,
         ):
             from Tableau2PowerBI.cli.run_extraction import main
 
             main()
 
-        extract_fn.assert_called_once_with("Workbook.twbx")
+        agent_cls.return_value.extract_tableau_metadata.assert_called_once_with("Workbook.twbx")
 
     def test_run_skeleton_invokes_skeleton_agent(self) -> None:
         with (
@@ -139,17 +139,3 @@ class CliRunnerTests(unittest.TestCase):
 
         openai_client.responses.retrieve.assert_called_once_with(response_id="resp_123")
         openai_client.responses.cancel.assert_called_once_with(response_id="resp_123")
-
-    def test_run_pipeline_rejects_pbip_zip(self) -> None:
-        with (
-            patch("sys.argv", ["t2pbi-pipeline", "Workbook.zip"]),
-            patch("Tableau2PowerBI.cli.run_pipeline.setup_logging"),
-            patch(
-                "Tableau2PowerBI.cli.run_pipeline.detect_source_file",
-                return_value=types.SimpleNamespace(source_format="pbip"),
-            ),
-        ):
-            from Tableau2PowerBI.cli.run_pipeline import main
-
-            with self.assertRaises(SystemExit):
-                main()

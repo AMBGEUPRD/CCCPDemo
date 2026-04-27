@@ -9,12 +9,30 @@ from typing import Any
 from Tableau2PowerBI.core.config import AgentSettings
 
 
-def create_project_client(settings: AgentSettings) -> Any:
-    """Create a sync Azure AI Projects client using DefaultAzureCredential."""
-    from azure.ai.projects import AIProjectClient
+def _make_sync_credential(tenant_id: str) -> Any:
+    # AzureCliCredential supports tenant_id for explicit tenant targeting (dev).
+    # DefaultAzureCredential is used when no tenant is specified (prod/managed identity).
+    if tenant_id:
+        from azure.identity import AzureCliCredential
+        return AzureCliCredential(tenant_id=tenant_id)
     from azure.identity import DefaultAzureCredential
+    return DefaultAzureCredential()
 
-    credential = DefaultAzureCredential()
+
+def _make_async_credential(tenant_id: str) -> Any:
+    if tenant_id:
+        from azure.identity.aio import AzureCliCredential
+        return AzureCliCredential(tenant_id=tenant_id)
+    from azure.identity.aio import DefaultAzureCredential
+    return DefaultAzureCredential()
+
+
+def create_project_client(settings: AgentSettings) -> Any:
+    """Create a sync Azure AI Projects client."""
+    from azure.ai.projects import AIProjectClient
+
+    credential = _make_sync_credential(settings.tenant_id)
+
     return AIProjectClient(
         endpoint=settings.project_endpoint,
         credential=credential,
@@ -23,11 +41,11 @@ def create_project_client(settings: AgentSettings) -> Any:
 
 
 def create_async_project_client(settings: AgentSettings) -> Any:
-    """Create an async Azure AI Projects client using DefaultAzureCredential."""
+    """Create an async Azure AI Projects client."""
     from azure.ai.projects.aio import AIProjectClient
-    from azure.identity.aio import DefaultAzureCredential
 
-    credential = DefaultAzureCredential()
+    credential = _make_async_credential(settings.tenant_id)
+
     return AIProjectClient(
         endpoint=settings.project_endpoint,
         credential=credential,

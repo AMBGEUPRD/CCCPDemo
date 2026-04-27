@@ -1,16 +1,19 @@
 import argparse
 
-from Tableau2PowerBI.core.source_detection import extract_metadata_with_dispatch
+from Tableau2PowerBI.agents.metadata_extractor import (
+    TableauMetadataExtractorAgent,
+)
 from Tableau2PowerBI.core.logging_setup import setup_logging
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Extract metadata from a supported source file.")
-    parser.add_argument("source_path", help="Path to .twb, .twbx, or .zip (PBIP package) file")
+    parser = argparse.ArgumentParser(description="Extract metadata from a Tableau workbook.")
+    parser.add_argument("twb_path", help="Path to .twb or .twbx file")
     args = parser.parse_args()
 
     setup_logging()
-    extract_metadata_with_dispatch(args.source_path)
+    agent = TableauMetadataExtractorAgent()
+    agent.extract_tableau_metadata(args.twb_path)
 
 
 if __name__ == "__main__":

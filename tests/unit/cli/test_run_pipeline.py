@@ -5,17 +5,6 @@ import unittest
 from tests.support import managed_tempdir
 
 
-def _write_minimal_twb(path):
-    path.write_text(
-        '<?xml version="1.0"?>'
-        '<workbook xmlns:user="http://www.tableausoftware.com/xml/user"'
-        ' source-build="2024.1.0" source-platform="win" version="18.1">'
-        "<datasources/><worksheets/><dashboards/>"
-        "</workbook>",
-        encoding="utf-8",
-    )
-
-
 class MigrationPipelineTests(unittest.TestCase):
     """Test the deterministic parts of MigrationPipeline (no Azure calls)."""
 
@@ -34,21 +23,21 @@ class MigrationPipelineTests(unittest.TestCase):
     def test_workbook_name_from_path(self):
         with managed_tempdir() as tmpdir:
             twb = tmpdir / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             pipeline = self._make_pipeline(str(twb))
             self.assertEqual(pipeline.workbook_name, "Workbook")
 
     def test_semantic_model_name_defaults_to_workbook_name(self):
         with managed_tempdir() as tmpdir:
             twb = tmpdir / "SalesReport.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             pipeline = self._make_pipeline(str(twb))
             self.assertEqual(pipeline.semantic_model_name, "SalesReport")
 
     def test_semantic_model_name_override(self):
         with managed_tempdir() as tmpdir:
             twb = tmpdir / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             pipeline = self._make_pipeline(str(twb), semantic_model_name="Custom Name")
             self.assertEqual(pipeline.semantic_model_name, "Custom Name")
 
@@ -94,7 +83,7 @@ class MigrationPipelineTests(unittest.TestCase):
 
         with managed_tempdir() as tmpdir:
             twb = tmpdir / "W.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = AgentSettings(
                 project_endpoint="https://test",
                 model_dax_measures="o3",
@@ -109,7 +98,7 @@ class MigrationPipelineTests(unittest.TestCase):
 
         with managed_tempdir() as tmpdir:
             twb = tmpdir / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             settings = AgentSettings(
                 project_endpoint="https://test",
                 output_root=tmpdir / "output",

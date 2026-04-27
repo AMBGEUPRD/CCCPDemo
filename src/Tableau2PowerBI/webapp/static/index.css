@@ -90,19 +90,11 @@
 }
 .dz-title { font-weight: 700; font-size: 15px; color: var(--ink); }
 .dz-sub   { font-size: 13px; color: var(--muted); }
-.dz-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.dz-chips { display: flex; gap: 6px; }
 .dz-chip  {
-  display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--mono); font-size: 11px; font-weight: 500;
   background: var(--white); border: 1px solid var(--border);
   border-radius: 6px; padding: 3px 10px; color: var(--ink2);
-}
-.dz-chip-icon {
-  width: 13px; height: 13px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.dz-chip-icon svg {
-  width: 100%; height: 100%; display: block;
 }
 
 /* File preview */
@@ -274,48 +266,6 @@
 
 .lstep-label { font-size: 11px; white-space: nowrap; }
 
-.upload-progress-card {
-  display: none;
-  width: min(480px, calc(100vw - 48px));
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--card-bg);
-  box-shadow: 0 12px 32px rgba(79,70,229,.12);
-}
-.upload-progress-card.on { display: block; }
-.upload-progress-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.upload-progress-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.upload-progress-value {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--violet);
-}
-.upload-progress-track {
-  height: 10px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(124,58,237,.08), rgba(99,102,241,.18));
-  overflow: hidden;
-}
-.upload-progress-fill {
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--violet), var(--indigo), #22c55e);
-  box-shadow: 0 0 24px rgba(79,70,229,.28);
-  transition: width .18s ease-out;
-}
-
 /* ── Success modal ── */
 .modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 300;
@@ -420,7 +370,6 @@
   .loading-orb { animation: none; }
   .lstep.active .lstep-num { animation: none; }
   .lstep-connector::after { transition: none; }
-  .upload-progress-fill { transition: none; }
   .modal { animation: none; }
   .toast { animation: none; }
   .toast.dismiss { animation: none; }

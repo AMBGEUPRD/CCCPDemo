@@ -25,16 +25,6 @@ from Tableau2PowerBI.agents.target_technical_doc.models import (
 )
 from Tableau2PowerBI.core.prompt_utils import compact_json
 
-
-class PromptBudgetError(RuntimeError):
-    """Raised when the fixed prompt overhead exceeds the configured token budget.
-
-    Signals that chunking is impossible — the fixed parts (prefix, func_doc, headers)
-    alone fill the budget, leaving no room for variable content (datasources/dashboards).
-    The caller should fall back to a single oversized LLM call.
-    """
-
-
 # ── Token estimation ──────────────────────────────────────────────────
 
 _BYTES_PER_TOKEN: int = 4
@@ -96,13 +86,6 @@ def build_datasource_batches(
         return [{"datasources": [], "parameters": parameters}]
 
     available_tokens = budget_tokens - fixed_tokens
-    # Guard: fixed overhead alone exceeds total budget — no room for any variable content
-    if available_tokens <= 0:
-        raise PromptBudgetError(
-            f"Token budget is unusable: fixed prompt overhead ({fixed_tokens} tokens) "
-            f"exceeds or equals the configured budget ({budget_tokens} tokens). "
-            f"Increase tdd_max_prompt_tokens by at least {fixed_tokens - budget_tokens + 1} tokens."
-        )
     # Token cost of parameters (only counted against the first batch)
     params_json = compact_json(parameters) if parameters else "[]"
     params_tokens = estimate_tokens(params_json)
@@ -198,13 +181,6 @@ def build_dashboard_batches(
     shared_tokens = estimate_tokens(compact_json(shared_context))
 
     available_tokens = budget_tokens - fixed_tokens
-    # Guard: fixed overhead alone exceeds total budget — no room for any variable content
-    if available_tokens <= 0:
-        raise PromptBudgetError(
-            f"Token budget is unusable: fixed prompt overhead ({fixed_tokens} tokens) "
-            f"exceeds or equals the configured budget ({budget_tokens} tokens). "
-            f"Increase tdd_max_prompt_tokens by at least {fixed_tokens - budget_tokens + 1} tokens."
-        )
 
     if not dashboards:
         # No dashboards — single batch with standalone worksheets

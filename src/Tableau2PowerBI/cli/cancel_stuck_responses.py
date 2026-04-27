@@ -22,7 +22,7 @@ def _create_project_client() -> AIProjectClient:
     settings = get_agent_settings()
     return AIProjectClient(
         endpoint=settings.project_endpoint,
-        credential=DefaultAzureCredential(),
+        credential=DefaultAzureCredential(tenant_id=settings.tenant_id),
         allow_preview=True,
     )
 

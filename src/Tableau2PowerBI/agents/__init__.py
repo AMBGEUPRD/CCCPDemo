@@ -17,7 +17,6 @@ from Tableau2PowerBI.agents.assembler import PBIPProjectAssemblerAgent
 from Tableau2PowerBI.agents.dax_measures import TmdlMeasuresGeneratorAgent
 from Tableau2PowerBI.agents.functional_doc import FunctionalDocAgent
 from Tableau2PowerBI.agents.metadata_extractor import TableauMetadataExtractorAgent
-from Tableau2PowerBI.agents.powerbi_metadata_extractor import PowerBIMetadataExtractorAgent
 from Tableau2PowerBI.agents.report_page_visuals import ReportPageVisualsAgent
 from Tableau2PowerBI.agents.report_skeleton import ReportSkeletonAgent
 from Tableau2PowerBI.agents.report_visuals import PbirReportGeneratorAgent
@@ -32,7 +31,6 @@ __all__ = [
     "PBIPProjectSkeletonAgent",
     "PBIPSemanticModelGeneratorAgent",
     "PbirReportGeneratorAgent",
-    "PowerBIMetadataExtractorAgent",
     "ReportPageVisualsAgent",
     "ReportSkeletonAgent",
     "TableauMetadataExtractorAgent",

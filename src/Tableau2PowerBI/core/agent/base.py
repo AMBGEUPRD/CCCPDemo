@@ -62,7 +62,6 @@ class ContextLengthExceededError(Exception):
 
 _SKILL_FOLDER_MAP: dict[str, str] = {
     "tableau_metadata_extractor_agent": "metadata_extractor",
-    "powerbi_metadata_extractor_agent": "powerbi_metadata_extractor",
     "pbip_project_skeleton_agent": "skeleton",
     "pbip_semantic_model_generator_agent": "semantic_model",
     "tmdl_measures_generator_agent": "dax_measures",

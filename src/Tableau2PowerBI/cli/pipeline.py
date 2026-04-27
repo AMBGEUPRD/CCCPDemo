@@ -44,7 +44,6 @@ from Tableau2PowerBI.core.run_history import (
     compute_input_hash,
     resolve_stages_to_run,
 )
-from Tableau2PowerBI.core.source_detection import detect_source_file
 from Tableau2PowerBI.core.token_tracker import token_tracker
 from Tableau2PowerBI.core.output_dirs import get_output_dir
 
@@ -93,11 +92,6 @@ class MigrationPipeline:
         self.resolved_path = Path(twb_path).resolve()
         if not self.resolved_path.exists():
             raise FileNotFoundError(f"Workbook not found: {self.resolved_path}")
-        detected = detect_source_file(self.resolved_path)
-        if detected.source_format != "tableau":
-            raise ValueError(
-                "PBIP ZIP inputs are analyze-only in v1. Use metadata extraction instead of the migration pipeline."
-            )
 
         self.workbook_name = self.resolved_path.stem
         self.semantic_model_name = semantic_model_name or self.workbook_name

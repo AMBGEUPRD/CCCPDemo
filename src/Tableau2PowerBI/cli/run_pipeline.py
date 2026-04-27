@@ -6,7 +6,6 @@ from Tableau2PowerBI.cli import pipeline as pipeline_module
 from Tableau2PowerBI.core.config import AgentSettings
 from Tableau2PowerBI.core.run_history import STAGE_GRAPH, RunHistory
 from Tableau2PowerBI.core.logging_setup import setup_logging
-from Tableau2PowerBI.core.source_detection import detect_source_file
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +71,6 @@ def main() -> None:
 
     setup_logging()
     settings = pipeline_module.build_settings(args.models)
-    detected = detect_source_file(args.twb_path)
-    if detected.source_format != "tableau":
-        parser.error("PBIP ZIP inputs are analyze-only in v1. Use t2pbi-extract or the web analyze flow instead.")
 
     # Resolve --resume to a concrete run_id
     resume_run_id = None

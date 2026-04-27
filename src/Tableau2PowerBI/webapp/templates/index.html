@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}BIM-AI — Source Analysis{% endblock %}
+{% block title %}BIM-AI — Tableau Migration{% endblock %}
 {% block head_css %}<link rel="stylesheet" href="/static/index.css" />{% endblock %}
 
 {% block nav_badge %}<span class="nav-badge">Beta</span><div class="nav-spacer"></div>{% endblock %}
@@ -14,12 +14,18 @@
   <!-- Upload card (primary) -->
   <div class="upload-card">
     <div style="position:relative;z-index:1">
-      <div class="card-title">Upload your source file</div>
-      <div class="card-sub">Drop a file &mdash; max {{ upload_limit_mb }} MB</div>
+      <div class="card-title">Upload your workbook</div>
+      <div class="card-sub">
+        Drop a
+        <code style="font-family:var(--mono);background:var(--violet-l);color:var(--violet);padding:1px 7px;border-radius:4px;font-size:12px">.twb</code>
+        or
+        <code style="font-family:var(--mono);background:var(--violet-l);color:var(--violet);padding:1px 7px;border-radius:4px;font-size:12px">.twbx</code>
+        file &mdash; max {{ upload_limit_mb }} MB
+      </div>
     </div>
 
-    <div class="dz" id="dz" data-upload-limit-bytes="{{ upload_limit_bytes }}" data-upload-limit-mb="{{ upload_limit_mb }}" tabindex="0" role="button" aria-label="Upload a Tableau workbook or PBIP package">
-      <input type="file" id="fi" accept=".twb,.twbx,.zip" />
+    <div class="dz" id="dz" data-upload-limit-bytes="{{ upload_limit_bytes }}" data-upload-limit-mb="{{ upload_limit_mb }}" tabindex="0" role="button" aria-label="Upload a Tableau workbook file">
+      <input type="file" id="fi" accept=".twb,.twbx" />
       <div class="dz-graphic">
         <div class="dz-graphic-bg">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,63 +39,8 @@
       <div class="dz-title">Drop your file here</div>
       <div class="dz-sub">or click to browse your computer</div>
       <div class="dz-chips">
-        <span class="dz-chip">
-          <span class="dz-chip-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-              <g fill="none" stroke-linecap="round" stroke-width="1.1">
-                <path d="M8 1.5v3.1M8 11.4v3.1M1.5 8h3.1M11.4 8h3.1" stroke="#eb6b2c"/>
-                <path d="M4.1 4.1l2.2 2.2M9.7 9.7l2.2 2.2M11.9 4.1l-2.2 2.2M6.3 9.7l-2.2 2.2" stroke="#5aa4d6"/>
-                <circle cx="8" cy="8" r="1.4" fill="#e33c84" stroke="#e33c84"/>
-                <circle cx="8" cy="3.2" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="8" cy="12.8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="3.2" cy="8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="12.8" cy="8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="4.6" cy="4.6" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="11.4" cy="4.6" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="4.6" cy="11.4" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="11.4" cy="11.4" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-              </g>
-            </svg>
-          </span>
-          <span>.twb</span>
-        </span>
-        <span class="dz-chip">
-          <span class="dz-chip-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-              <g fill="none" stroke-linecap="round" stroke-width="1.1">
-                <path d="M8 1.5v3.1M8 11.4v3.1M1.5 8h3.1M11.4 8h3.1" stroke="#eb6b2c"/>
-                <path d="M4.1 4.1l2.2 2.2M9.7 9.7l2.2 2.2M11.9 4.1l-2.2 2.2M6.3 9.7l-2.2 2.2" stroke="#5aa4d6"/>
-                <circle cx="8" cy="8" r="1.4" fill="#e33c84" stroke="#e33c84"/>
-                <circle cx="8" cy="3.2" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="8" cy="12.8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="3.2" cy="8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="12.8" cy="8" r="1.1" fill="#eb6b2c" stroke="#eb6b2c"/>
-                <circle cx="4.6" cy="4.6" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="11.4" cy="4.6" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="4.6" cy="11.4" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-                <circle cx="11.4" cy="11.4" r="1.1" fill="#5aa4d6" stroke="#5aa4d6"/>
-              </g>
-            </svg>
-          </span>
-          <span>.twbx</span>
-        </span>
-        <span class="dz-chip dz-chip-pbi">
-          <span class="dz-chip-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="pbiChipGradient" x1="2" y1="14" x2="14" y2="2" gradientUnits="userSpaceOnUse">
-                  <stop offset="0" stop-color="#d69b00"/>
-                  <stop offset="1" stop-color="#f2c811"/>
-                </linearGradient>
-              </defs>
-              <rect x="1.5" y="6.8" width="2.4" height="6.2" rx="1.1" fill="url(#pbiChipGradient)"/>
-              <rect x="5.1" y="4.8" width="2.4" height="8.2" rx="1.1" fill="url(#pbiChipGradient)"/>
-              <rect x="8.7" y="2.9" width="2.4" height="10.1" rx="1.1" fill="url(#pbiChipGradient)"/>
-              <rect x="12.3" y="1.4" width="2.2" height="11.6" rx="1.1" fill="url(#pbiChipGradient)"/>
-            </svg>
-          </span>
-          <span>.pbip</span>
-        </span>
+        <span class="dz-chip">.twb</span>
+        <span class="dz-chip">.twbx</span>
         <span class="dz-chip">max {{ upload_limit_mb }} MB</span>
       </div>
     </div>
@@ -162,7 +113,7 @@
       <line x1="17" y1="13.5" x2="9.9"  y2="20.3" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" stroke-linecap="round"/>
     </svg>
   </div>
-  <div class="loading-title">Analyzing your source...</div>
+  <div class="loading-title">Analyzing your workbook...</div>
   <div class="loading-steps">
     <div class="lstep active" id="ls1">
       <div class="lstep-num">1</div>
@@ -171,16 +122,7 @@
     <div class="lstep-connector" id="lc1"></div>
     <div class="lstep" id="ls2">
       <div class="lstep-num">2</div>
-    <div class="lstep-label">Parse</div>
-    </div>
-  </div>
-  <div class="upload-progress-card" id="uploadProgressCard" aria-live="polite">
-    <div class="upload-progress-head">
-      <span class="upload-progress-title" id="uploadProgressTitle">Preparing upload...</span>
-      <span class="upload-progress-value" id="uploadProgressValue">0%</span>
-    </div>
-    <div class="upload-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Upload progress" id="uploadProgressTrack">
-      <div class="upload-progress-fill" id="uploadProgressFill"></div>
+      <div class="lstep-label">Parse</div>
     </div>
   </div>
   <div class="terminal-wrap" style="width:480px;margin-top:18px">
@@ -204,7 +146,7 @@
       </svg>
     </div>
     <h2>Analysis complete!</h2>
-    <p>Your source file has been analyzed. View the full AI-generated analysis report.</p>
+    <p>Your Tableau workbook has been analyzed and documented. View the full AI-generated migration report.</p>
     <div class="modal-meta">
       <div class="modal-row">
         <span>File</span><span id="metaFile">&mdash;</span>
@@ -268,11 +210,6 @@
     document.getElementById('lc1'),
   ];
   const logConsole    = document.getElementById('logConsole');
-  const uploadProgressCard  = document.getElementById('uploadProgressCard');
-  const uploadProgressTitle = document.getElementById('uploadProgressTitle');
-  const uploadProgressValue = document.getElementById('uploadProgressValue');
-  const uploadProgressFill  = document.getElementById('uploadProgressFill');
-  const uploadProgressTrack = document.getElementById('uploadProgressTrack');
 
   const ANALYZE_STEPS = 2; // ADLS upload + extraction
   const uploadLimitBytes = Number(dz.dataset.uploadLimitBytes || '0');
@@ -287,22 +224,6 @@
   }
 
   let file = null;
-  let uploadProgressPercent = 0;
-
-  function setUploadProgress(percent, label) {
-    var clamped = Math.max(0, Math.min(100, Math.round(percent || 0)));
-    uploadProgressPercent = clamped;
-    uploadProgressCard.classList.add('on');
-    uploadProgressFill.style.width = clamped + '%';
-    uploadProgressValue.textContent = clamped + '%';
-    uploadProgressTitle.textContent = label || 'Uploading...';
-    uploadProgressTrack.setAttribute('aria-valuenow', String(clamped));
-  }
-
-  function resetUploadProgress() {
-    uploadProgressPercent = 0;
-    setUploadProgress(0, 'Uploading file to web app...');
-  }
 
   fi.addEventListener('change', e => pick(e.target.files[0]));
 
@@ -324,7 +245,7 @@
   function pick(f) {
     if (!f) return;
     const ext = f.name.split('.').pop().toLowerCase();
-      if (!['twb','twbx','zip'].includes(ext)) { alert('Unsupported format. Please upload a .twb, .twbx, or .zip PBIP package.'); return; }
+    if (!['twb','twbx'].includes(ext)) { alert('Unsupported format. Please upload a .twb or .twbx file.'); return; }
     if (uploadLimitBytes && f.size > uploadLimitBytes) { alert('File exceeds the ' + uploadLimitMb + ' MB limit.'); return; }
     file = f;
     fpName.textContent = f.name;
@@ -376,7 +297,6 @@
     loadingOverlay.classList.add('on');
     logConsole.innerHTML = '';
     advanceStep(1); // show step 1 as active immediately
-    resetUploadProgress();
     showToast('Upload started...', 'info');
 
     try {
@@ -384,7 +304,55 @@
       fd.append('file', file);
       fd.append('lang', 'en');
 
-      const finalData = await streamAnalyzeRequest(fd);
+      // POST with fetch, then read the SSE stream from the response body
+      const resp = await fetch('/analyze-stream', { method: 'POST', body: fd });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(errText || 'HTTP ' + resp.status);
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalData = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE messages are separated by double newlines
+        let boundary;
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const raw = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+
+          // Extract the "data:" line
+          const dataLine = raw.split('\n').find(l => l.startsWith('data:'));
+          if (!dataLine) continue;
+          const jsonStr = dataLine.slice(5).trim();
+          let msg;
+          try { msg = JSON.parse(jsonStr); } catch { continue; }
+
+          // Live log event
+          if (msg.type === 'log') {
+            appendLog(msg.level, msg.message);
+            continue;
+          }
+
+          if (msg.step === 'error') {
+            throw new Error(msg.message || 'Analysis failed');
+          }
+          if (msg.step === 'complete') {
+            finalData = msg;
+            markAllDone();
+            continue;
+          }
+          // step 1 or 2: update the UI
+          if (msg.state === 'running') advanceStep(msg.step);
+          if (msg.state === 'done')    advanceStep(msg.step + 1); // move dot forward
+        }
+      }
 
       if (!finalData) throw new Error('Stream ended without a result');
 
@@ -396,10 +364,8 @@
       const sessionPayload = JSON.stringify({
         id,
         filename:  file.name,
-        workbook_name: finalData.workbook_name || file.name.replace(/\.\w+$/, ''),
         adls_path: finalData.adls_path || null,
         run_id:    finalData.run_id || null,
-        source_format: finalData.source_format || 'tableau',
         result:    finalData.result || JSON.stringify(finalData, null, 2),
         timestamp: new Date().toISOString(),
       });
@@ -528,115 +494,6 @@
     var d = document.createElement('div');
     d.textContent = s || '';
     return d.innerHTML;
-  }
-
-  function streamAnalyzeRequest(formData) {
-    return new Promise(function(resolve, reject) {
-      var xhr = new XMLHttpRequest();
-      var responseOffset = 0;
-      var buffer = '';
-      var finalData = null;
-      var settled = false;
-
-      function fail(message) {
-        if (settled) return;
-        settled = true;
-        reject(new Error(message));
-      }
-
-      function handleMessage(msg) {
-        if (msg.type === 'log') {
-          appendLog(msg.level, msg.message);
-          return;
-        }
-        if (msg.type === 'upload_progress' && msg.phase === 'adls') {
-          setUploadProgress(msg.percent || 0, 'Uploading file to Azure Storage...');
-          return;
-        }
-        if (msg.step === 'error') {
-          fail(msg.message || 'Analysis failed');
-          return;
-        }
-        if (msg.step === 'complete') {
-          finalData = msg;
-          markAllDone();
-          setUploadProgress(100, 'Upload complete');
-          return;
-        }
-        if (msg.step === 1 && msg.state === 'running') {
-          uploadProgressCard.classList.add('on');
-          uploadProgressTitle.textContent = 'Uploading file to Azure Storage...';
-          uploadProgressTrack.setAttribute('aria-valuenow', String(uploadProgressPercent));
-        }
-        if (msg.step === 1 && msg.state === 'done') {
-          setUploadProgress(100, 'Upload to Azure Storage complete');
-        }
-        if (msg.step === 2 && msg.state === 'running') {
-          setUploadProgress(100, 'Upload complete. Parsing source...');
-        }
-        if (msg.state === 'running') advanceStep(msg.step);
-        if (msg.state === 'done') advanceStep(msg.step + 1);
-      }
-
-      function processResponseText() {
-        var text = xhr.responseText || '';
-        if (text.length <= responseOffset) return;
-        buffer += text.slice(responseOffset);
-        responseOffset = text.length;
-
-        var boundary;
-        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-          var raw = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
-          var dataLine = raw.split('\n').find(function(line) { return line.startsWith('data:'); });
-          if (!dataLine) continue;
-          var msg;
-          try { msg = JSON.parse(dataLine.slice(5).trim()); } catch (_) { continue; }
-          handleMessage(msg);
-          if (settled) return;
-        }
-      }
-
-      xhr.open('POST', '/analyze-stream', true);
-
-      xhr.upload.addEventListener('progress', function(evt) {
-        if (!evt.lengthComputable) return;
-        var percent = evt.total > 0 ? Math.round((evt.loaded / evt.total) * 100) : 0;
-        setUploadProgress(percent, 'Uploading file to web app...');
-      });
-
-      xhr.upload.addEventListener('load', function() {
-        setUploadProgress(100, 'Upload to web app complete');
-      });
-
-      xhr.addEventListener('progress', processResponseText);
-
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState >= 3) processResponseText();
-        if (xhr.readyState !== 4 || settled) return;
-        processResponseText();
-        if (xhr.status < 200 || xhr.status >= 300) {
-          fail(xhr.responseText || ('HTTP ' + xhr.status));
-          return;
-        }
-        if (!finalData) {
-          fail('Stream ended without a result');
-          return;
-        }
-        settled = true;
-        resolve(finalData);
-      };
-
-      xhr.onerror = function() {
-        fail('Network error during upload');
-      };
-
-      xhr.onabort = function() {
-        fail('Upload aborted');
-      };
-
-      xhr.send(formData);
-    });
   }
 </script>
 {% endblock %}

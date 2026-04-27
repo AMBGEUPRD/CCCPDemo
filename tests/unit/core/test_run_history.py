@@ -91,7 +91,7 @@ class TestRunManifest:
         manifest = RunManifest(
             run_id="2026-04-08T10-00-00+00-00",
             workbook_name="Supermercato",
-            workbook_file="Supermercato.zip",
+            workbook_file="Supermercato.twbx",
             created_at="2026-04-08T10:00:00+00:00",
             updated_at="2026-04-08T10:00:00+00:00",
             stages={
@@ -102,19 +102,15 @@ class TestRunManifest:
             },
             stored_artifacts=["tableau_metadata_extractor_agent"],
             token_usage={"total_in": 5000},
-            adls_path="abfss://tableau@storage/Supermercato.zip",
+            adls_path="abfss://tableau@storage/Supermercato.twbx",
             result_id="result_1712614859123",
-            source_format="pbip",
-            metadata_agent_name="powerbi_metadata_extractor_agent",
         )
         d = manifest.to_dict()
         restored = RunManifest.from_dict(d)
         assert restored.run_id == manifest.run_id
-        assert restored.workbook_file == "Supermercato.zip"
+        assert restored.workbook_file == "Supermercato.twbx"
         assert restored.adls_path == manifest.adls_path
         assert restored.result_id == manifest.result_id
-        assert restored.source_format == "pbip"
-        assert restored.metadata_agent_name == "powerbi_metadata_extractor_agent"
         assert restored.stages["metadata_extractor"].status == StageStatus.COMPLETED
         assert restored.stored_artifacts == ["tableau_metadata_extractor_agent"]
 
@@ -159,17 +155,6 @@ class TestRunHistory:
         loaded = history.load_run("WB", m.run_id)
         assert loaded.run_id == m.run_id
         assert loaded.workbook_file == "WB.twb"
-
-    def test_create_and_load_pbip_run(self, history: RunHistory) -> None:
-        m = history.create_run(
-            "SalesModel",
-            "upload.zip",
-            source_format="pbip",
-            metadata_agent_name="powerbi_metadata_extractor_agent",
-        )
-        loaded = history.load_run("SalesModel", m.run_id)
-        assert loaded.source_format == "pbip"
-        assert loaded.metadata_agent_name == "powerbi_metadata_extractor_agent"
 
     def test_list_runs_returns_newest_first(self, history: RunHistory) -> None:
         history.create_run("WB", "WB.twb")  # older
@@ -327,29 +312,6 @@ class TestArtifactStorage:
         shutil.rmtree(src)
         history.restore_run(m)
         assert (output_root / agent / wb / "ResumeWB.Report").exists()
-
-    def test_store_and_restore_powerbi_metadata_agent(self, env: tuple[RunHistory, Path, Path]) -> None:
-        """PBIP metadata snapshots restore from the Power BI metadata agent directory."""
-        history, _, output_root = env
-        wb = "SalesModel"
-        agent = "powerbi_metadata_extractor_agent"
-        src = output_root / agent / wb
-        src.mkdir(parents=True)
-        (src / "powerbi_metadata.json").write_text('{"source_format": "pbip"}', encoding="utf-8")
-
-        m = history.create_run(
-            wb,
-            "upload.zip",
-            source_format="pbip",
-            metadata_agent_name=agent,
-        )
-        history.store_artifacts(m, agent)
-
-        import shutil
-
-        shutil.rmtree(src)
-        history.restore_run(m)
-        assert (output_root / agent / wb / "powerbi_metadata.json").exists()
 
 
 # ═══════════════════════════════════════════════════════════════════

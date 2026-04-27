@@ -8,18 +8,6 @@
     return;
   }
 
-  var sourceFormat = String(session.source_format || analysis.source_format || 'tableau').toLowerCase();
-  if (sourceFormat === 'pbip') {
-    var err = document.getElementById('errorState');
-    if (err) {
-      err.querySelector('.error-title').textContent = 'Generation unavailable';
-      err.querySelector('.error-sub').textContent =
-        'PBIP uploads are analyze-only in v1. Generation is supported only for Tableau inputs.';
-      err.classList.add('on');
-    }
-    return;
-  }
-
   document.getElementById('generateContent').style.display = 'flex';
 
   /* Populate header from session */
@@ -40,7 +28,7 @@
   }
 
   /* Check TDD status from run manifest if we have a run_id */
-  var workbookName = session.workbook_name || (session.filename || '').replace(/\.\w+$/, '');
+  var workbookName = (session.filename || '').replace(/\.\w+$/, '');
   var tddCached = false;
   var manifest = null;
 
@@ -180,10 +168,7 @@ async function runFunctionalDocGeneration(workbookName, resultId, runId) {
   // Repurpose the TDD loading indicator for functional doc
   if (titleEl) titleEl.textContent = 'Generating Functional Documentation\u2026';
   if (subEl) subEl.textContent = 'The AI agent is analyzing worksheets, dashboards, and data sources.';
-  // Hide TDD phase labels — not meaningful during functional-doc re-generation
-  if (loadingEl && loadingEl.querySelector('.tdd-loading-phases')) loadingEl.querySelector('.tdd-loading-phases').style.display = 'none';
 
-  try {
   var body = { workbook_name: workbookName };
   if (resultId) body.result_id = resultId;
   if (runId) body.run_id = runId;
@@ -222,10 +207,6 @@ async function runFunctionalDocGeneration(workbookName, resultId, runId) {
   // Restore original TDD loading text
   if (titleEl) titleEl.textContent = 'Generating Technical Design Document\u2026';
   if (subEl) subEl.textContent = 'The AI agent is designing the Power BI data model, DAX measures, and report layout.';
-  } finally {
-    // Restore TDD phase labels visibility
-    if (loadingEl && loadingEl.querySelector('.tdd-loading-phases')) loadingEl.querySelector('.tdd-loading-phases').style.display = '';
-  }
 }
 
 // ======================================================
@@ -656,7 +637,6 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
     var requestBody = {
       metadata_json: JSON.stringify(analysis),
       twb_path: session.filename || '',
-      workbook_name: session.workbook_name || (session.filename || '').replace(/\.\w+$/, ''),
       skip_tdd: true,
     };
     if (runId) requestBody.run_id = runId;

@@ -59,7 +59,7 @@ STATIC_DIR = _WEBAPP_DIR / "static"
 STATIC_DIR.mkdir(exist_ok=True)
 
 logger = logging.getLogger(__name__)
-ALLOWED_EXTENSIONS = {".twb", ".twbx", ".zip"}
+ALLOWED_EXTENSIONS = {".twb", ".twbx"}
 MAX_FILE_SIZE = webapp_settings.max_file_size_bytes
 MAX_FILE_SIZE_MB = webapp_settings.max_file_size_mb
 _SSELogHandler = _RuntimeSSELogHandler

@@ -9,21 +9,16 @@ Covers:
 import inspect
 import logging
 import asyncio
-import json
 from io import BytesIO
 import queue
 import unittest
 from types import SimpleNamespace
-from zipfile import ZipFile
 
 from fastapi import HTTPException
 from starlette.datastructures import UploadFile
 
-from Tableau2PowerBI.core.config import AgentSettings
-from Tableau2PowerBI.core.run_history import RunHistory
 from Tableau2PowerBI.webapp.app import _SSELogHandler, _validate_upload_content_length
 from Tableau2PowerBI.webapp.pipeline_stream_routes import build_analyze_stream_response
-from tests.support import managed_tempdir
 
 
 class SSELogHandlerTests(unittest.TestCase):
@@ -155,11 +150,6 @@ class PageRoutesTests(unittest.TestCase):
         self.assertIn('data-upload-limit-bytes="10737418240"', resp.text)
         self.assertNotIn("max 50 MB", resp.text)
         self.assertNotIn("52428800", resp.text)
-
-    def test_index_has_upload_progress_bar_markup(self):
-        resp = self.client.get("/")
-        self.assertIn("uploadProgressFill", resp.text)
-        self.assertIn("uploadProgressTrack", resp.text)
 
     def test_results_returns_200(self):
         resp = self.client.get("/results")
@@ -481,165 +471,6 @@ class GenerateStreamTDDReuseTests(unittest.TestCase):
         # Should not be 422 (may fail later in pipeline, but validation passes)
         self.assertNotEqual(resp.status_code, 422)
 
-    def test_generate_stream_rejects_pbip_metadata_payload(self):
-        resp = self.client.post(
-            "/generate-stream",
-            json={
-                "metadata_json": json.dumps({"source_format": "pbip"}),
-                "workbook_name": "SalesModel",
-                "twb_path": "upload.zip",
-            },
-        )
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn("analyze-only", resp.text)
-
-    def test_generate_stream_rejects_pbip_run_manifest(self):
-        from unittest.mock import patch
-
-        with managed_tempdir() as tmp:
-            settings = AgentSettings(
-                project_endpoint="https://test",
-                output_root=tmp / "output",
-                runs_root=tmp / "runs",
-                max_runs_per_workbook=10,
-            )
-            history = RunHistory(
-                runs_root=settings.runs_root,
-                output_root=settings.output_root,
-            )
-            manifest = history.create_run(
-                "SalesModel",
-                "upload.zip",
-                source_format="pbip",
-                metadata_agent_name="powerbi_metadata_extractor_agent",
-            )
-
-            with (
-                patch("Tableau2PowerBI.webapp.app.get_agent_settings", return_value=settings),
-                patch("Tableau2PowerBI.webapp.history.get_agent_settings", return_value=settings),
-            ):
-                resp = self.client.post(
-                    "/generate-stream",
-                    json={
-                        "metadata_json": "{}",
-                        "workbook_name": "SalesModel",
-                        "twb_path": "upload.zip",
-                        "run_id": manifest.run_id,
-                    },
-                )
-
-            self.assertEqual(resp.status_code, 400)
-            self.assertIn("analyze-only", resp.text)
-
-
-class AnalyzeStreamPbipTests(unittest.TestCase):
-    def test_analyze_stream_accepts_pbip_zip(self):
-        from fastapi.testclient import TestClient
-        from unittest.mock import patch
-
-        with managed_tempdir() as tmp:
-            settings = AgentSettings(
-                project_endpoint="https://test",
-                output_root=tmp / "output",
-                runs_root=tmp / "runs",
-                max_runs_per_workbook=10,
-            )
-            package = BytesIO()
-            with ZipFile(package, "w") as zf:
-                zf.writestr(
-                    "SalesModel.pbip",
-                    '{"version": "1.0", "artifacts": [{"report": {"path": "SalesModel.Report"}}]}',
-                )
-                zf.writestr(
-                    "SalesModel.Report/definition.pbir",
-                    '{"version": "4.0", "datasetReference": {"byPath": {"path": "../SalesModel.SemanticModel"}}}',
-                )
-
-            dispatched = SimpleNamespace(
-                source_format="pbip",
-                workbook_name="SalesModel",
-                metadata_agent_name="powerbi_metadata_extractor_agent",
-                result_text=json.dumps(
-                    {
-                        "source_format": "pbip",
-                        "pbip": {"project": {"name": "SalesModel"}},
-                    }
-                ),
-            )
-
-            with (
-                patch("Tableau2PowerBI.webapp.app.get_agent_settings", return_value=settings),
-                patch("Tableau2PowerBI.webapp.history.get_agent_settings", return_value=settings),
-                patch("Tableau2PowerBI.webapp.app.upload_to_adls", return_value="abfss://test/upload.zip"),
-                patch(
-                    "Tableau2PowerBI.webapp.pipeline_stream_routes.extract_metadata_with_dispatch",
-                    return_value=dispatched,
-                ),
-            ):
-                from Tableau2PowerBI.webapp.app import _result_store, app
-
-                _result_store.clear()
-                client = TestClient(app)
-                resp = client.post(
-                    "/analyze-stream",
-                    data={"lang": "en"},
-                    files={"file": ("upload.zip", package.getvalue(), "application/zip")},
-                )
-
-                self.assertEqual(resp.status_code, 200)
-                self.assertIn('"source_format": "pbip"', resp.text)
-                self.assertTrue(
-                    (settings.output_root / "powerbi_metadata_extractor_agent" / "SalesModel" / "analysis_result.json").exists()
-                )
-
-    def test_analyze_stream_emits_upload_progress_events(self):
-        from fastapi.testclient import TestClient
-        from unittest.mock import patch
-
-        with managed_tempdir() as tmp:
-            settings = AgentSettings(
-                project_endpoint="https://test",
-                output_root=tmp / "output",
-                runs_root=tmp / "runs",
-                max_runs_per_workbook=10,
-            )
-            dispatched = SimpleNamespace(
-                source_format="tableau",
-                workbook_name="SalesWB",
-                metadata_agent_name="tableau_metadata_extractor_agent",
-                result_text=json.dumps({"worksheets": []}),
-            )
-
-            def fake_upload(_file_bytes, _filename, progress_callback=None):
-                if progress_callback is not None:
-                    progress_callback(2, 4)
-                    progress_callback(4, 4)
-                return "abfss://test/upload.twb"
-
-            with (
-                patch("Tableau2PowerBI.webapp.app.get_agent_settings", return_value=settings),
-                patch("Tableau2PowerBI.webapp.history.get_agent_settings", return_value=settings),
-                patch("Tableau2PowerBI.webapp.app.upload_to_adls", side_effect=fake_upload),
-                patch(
-                    "Tableau2PowerBI.webapp.pipeline_stream_routes.extract_metadata_with_dispatch",
-                    return_value=dispatched,
-                ),
-            ):
-                from Tableau2PowerBI.webapp.app import _result_store, app
-
-                _result_store.clear()
-                client = TestClient(app)
-                resp = client.post(
-                    "/analyze-stream",
-                    data={"lang": "en"},
-                    files={"file": ("upload.twb", b"<workbook></workbook>", "application/octet-stream")},
-                )
-
-                self.assertEqual(resp.status_code, 200)
-                self.assertIn('"type": "upload_progress"', resp.text)
-                self.assertIn('"percent": 50', resp.text)
-                self.assertIn('"percent": 100', resp.text)
-
 
 class PromptParamRemovalTests(unittest.TestCase):
     """Tests that verify the 'prompt' parameter has been removed from the webapp."""
@@ -720,112 +551,6 @@ class PromptParamRemovalTests(unittest.TestCase):
             "fd.append('prompt',",
             response.text,
             "index.html should not append a 'prompt' field to FormData",
-        )
-
-
-# ── JS static-assertion tests ─────────────────────────────────────────
-
-
-import re
-import pathlib
-
-
-_JS_PATH = (
-    pathlib.Path(__file__).resolve().parents[3]
-    / "src" / "Tableau2PowerBI" / "webapp" / "static" / "results-generate.js"
-)
-
-
-def _extract_function_body(js_text: str, function_name: str) -> str:
-    """Return the body of an async function by scanning for matching braces.
-
-    Finds the first ``async function <function_name>(`` declaration and
-    extracts everything up to and including its closing ``}``.
-    """
-    marker = f"async function {function_name}("
-    start = js_text.find(marker)
-    if start == -1:
-        return ""
-    # Walk forward to find the opening brace
-    brace_pos = js_text.index("{", start)
-    depth = 0
-    for i in range(brace_pos, len(js_text)):
-        if js_text[i] == "{":
-            depth += 1
-        elif js_text[i] == "}":
-            depth -= 1
-            if depth == 0:
-                return js_text[start : i + 1]
-    return js_text[start:]
-
-
-class JsStaticAssertionTests(unittest.TestCase):
-    """Static assertions on results-generate.js function bodies.
-
-    These tests read the JS file as plain text and verify structural
-    properties without executing JavaScript.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.js_text = _JS_PATH.read_text(encoding="utf-8")
-        cls.functional_body = _extract_function_body(cls.js_text, "runFunctionalDocGeneration")
-        cls.tdd_body = _extract_function_body(cls.js_text, "startTddGeneration")
-
-    def test_functional_doc_rerun_hides_tdd_phase_labels(self):
-        """runFunctionalDocGeneration must hide .tdd-loading-phases before the fetch call
-        and restore it (set display to a non-'none' value) after.
-
-        This ensures TDD phase indicators do not show during functional-doc
-        re-generation, which would confuse the user.
-        """
-        body = self.functional_body
-        self.assertNotEqual(body, "", "runFunctionalDocGeneration not found in JS file")
-
-        # Must reference the phases container
-        self.assertIn(
-            ".tdd-loading-phases",
-            body,
-            "runFunctionalDocGeneration must reference .tdd-loading-phases",
-        )
-
-        # Must set display to 'none' (hide phases before fetch)
-        hide_match = re.search(
-            r"\.tdd-loading-phases[^;]*display[^;]*none",
-            body,
-        )
-        self.assertIsNotNone(
-            hide_match,
-            "runFunctionalDocGeneration must set .tdd-loading-phases display to 'none' before the fetch call",
-        )
-
-        # Must restore display to a non-'none' value after fetch (e.g., '', 'flex', 'block')
-        restore_match = re.search(
-            r"\.tdd-loading-phases[^;]*display[^;]*(?:''|\"\"|\"\"|'flex'|'block'|\"flex\"|\"block\")",
-            body,
-        )
-        self.assertIsNotNone(
-            restore_match,
-            "runFunctionalDocGeneration must restore .tdd-loading-phases display after the fetch call",
-        )
-
-    def test_regular_tdd_path_still_shows_phase_labels(self):
-        """startTddGeneration must NOT set .tdd-loading-phases to display:none.
-
-        Phase labels are meaningful for the TDD generation path and must
-        remain visible throughout.
-        """
-        body = self.tdd_body
-        self.assertNotEqual(body, "", "startTddGeneration not found in JS file")
-
-        # Must NOT hide the phases container
-        hide_match = re.search(
-            r"\.tdd-loading-phases[^;]*display[^;]*none",
-            body,
-        )
-        self.assertIsNone(
-            hide_match,
-            "startTddGeneration must NOT set .tdd-loading-phases display to 'none'",
         )
 
 

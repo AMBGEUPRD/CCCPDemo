@@ -15,17 +15,6 @@ from Tableau2PowerBI.core.run_history import STAGE_GRAPH, StageStatus
 from tests.support import managed_tempdir
 
 
-def _write_minimal_twb(path: Path) -> None:
-    path.write_text(
-        '<?xml version="1.0"?>'
-        '<workbook xmlns:user="http://www.tableausoftware.com/xml/user"'
-        ' source-build="2024.1.0" source-platform="win" version="18.1">'
-        "<datasources/><worksheets/><dashboards/>"
-        "</workbook>",
-        encoding="utf-8",
-    )
-
-
 def _settings(tmp: Path) -> AgentSettings:
     return AgentSettings(
         project_endpoint="https://test",
@@ -47,7 +36,7 @@ class PipelineHistoryTests(unittest.TestCase):
         """A new pipeline creates a fresh manifest."""
         with managed_tempdir() as tmp:
             twb = tmp / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = _settings(tmp)
             p = self._make_pipeline(twb, settings=s)
             manifest = p._load_or_create_manifest()
@@ -61,7 +50,7 @@ class PipelineHistoryTests(unittest.TestCase):
         """Pipeline with resume_run_id loads the specified run."""
         with managed_tempdir() as tmp:
             twb = tmp / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = _settings(tmp)
             # Create a run first
             p1 = self._make_pipeline(twb, settings=s)
@@ -77,7 +66,7 @@ class PipelineHistoryTests(unittest.TestCase):
         """Stages not in stages_to_run are skipped."""
         with managed_tempdir() as tmp:
             twb = tmp / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = _settings(tmp)
             p = self._make_pipeline(twb, settings=s)
             manifest = p._load_or_create_manifest()
@@ -98,7 +87,7 @@ class PipelineHistoryTests(unittest.TestCase):
         """Stages in stages_to_run are executed and recorded."""
         with managed_tempdir() as tmp:
             twb = tmp / "Workbook.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = _settings(tmp)
             p = self._make_pipeline(twb, settings=s)
             manifest = p._load_or_create_manifest()
@@ -153,7 +142,7 @@ class CLIFlagTests(unittest.TestCase):
         """MigrationPipeline can accept force_stages kwarg."""
         with managed_tempdir() as tmp:
             twb = tmp / "W.twb"
-            _write_minimal_twb(twb)
+            twb.touch()
             s = _settings(tmp)
             from Tableau2PowerBI.cli.run_pipeline import MigrationPipeline
 

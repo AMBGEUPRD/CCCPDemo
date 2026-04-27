@@ -145,8 +145,7 @@ async function loadProject() {
 
 function renderHeader() {
   var ext = (currentRun.workbook_file || '').split('.').pop() || '?';
-  document.getElementById('projectExt').textContent =
-    currentRun.source_format === 'pbip' ? '.ZIP / PBIP' : '.' + ext.toUpperCase();
+  document.getElementById('projectExt').textContent = '.' + ext.toUpperCase();
 
   var dt = new Date(currentRun.updated_at || currentRun.created_at);
   var dtStr = dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
@@ -175,7 +174,6 @@ function renderPipeline() {
   var container = document.getElementById('pipelineGrid');
   container.innerHTML = '';
   var stages = currentRun.stages_full || {};
-  var isPbip = currentRun.source_format === 'pbip';
 
   STAGE_ORDER.forEach(function(name) {
     var info = stages[name] || { status: 'not_attempted', deterministic: false };
@@ -214,15 +212,13 @@ function renderPipeline() {
 
     // Re-run checkbox: disabled if upstream deps not met
     var upstreamOk = areUpstreamsMet(name, stages);
-    var disabledAttr = (upstreamOk && !isPbip) ? '' : ' disabled';
-    var title = isPbip
-      ? 'PBIP runs are analyze-only in v1'
-      : (upstreamOk
-        ? 'Select for re-generation'
-        : 'Cannot re-run: upstream stages not completed (' +
-          (info.upstream || []).filter(function(d) {
-            var ds = stages[d]; return !ds || ds.status !== 'completed';
-          }).map(function(d) { return STAGE_LABELS[d] || d; }).join(', ') + ')');
+    var disabledAttr = upstreamOk ? '' : ' disabled';
+    var title = upstreamOk
+      ? 'Select for re-generation'
+      : 'Cannot re-run: upstream stages not completed (' +
+        (info.upstream || []).filter(function(d) {
+          var ds = stages[d]; return !ds || ds.status !== 'completed';
+        }).map(function(d) { return STAGE_LABELS[d] || d; }).join(', ') + ')';
     html += '<input type="checkbox" class="stage-checkbox" data-stage="' + name + '"' +
       disabledAttr + ' title="' + esc(title) + '">';
 
@@ -236,14 +232,6 @@ function renderPipeline() {
 
 
 function updateRegenButton() {
-  if (currentRun && currentRun.source_format === 'pbip') {
-    var pbipBtn = document.getElementById('btnRegen');
-    var pbipBanner = document.getElementById('forceBanner');
-    pbipBtn.disabled = true;
-    pbipBtn.textContent = 'Unavailable for PBIP';
-    pbipBanner.style.display = 'none';
-    return;
-  }
   var checked = getCheckedStages();
   var stages = currentRun.stages_full || {};
   var btn = document.getElementById('btnRegen');
@@ -289,10 +277,8 @@ function renderActions() {
 
   // Re-generate button
   var btnRegen = document.getElementById('btnRegen');
-  btnRegen.disabled = currentRun.source_format === 'pbip';
-  btnRegen.textContent = currentRun.source_format === 'pbip' ? 'Unavailable for PBIP' : 'Re-generate Selected';
+  btnRegen.disabled = true;
   btnRegen.onclick = function() {
-    if (currentRun.source_format === 'pbip') return;
     var checked = getCheckedStages();
     if (checked.length === 0) return;
     var url = '/generate?id=' + encodeURIComponent(currentRun._result_id || '') +
@@ -303,9 +289,8 @@ function renderActions() {
 
   // Download button
   var btnDownload = document.getElementById('btnDownload');
-  btnDownload.disabled = !currentRun.download_available || currentRun.source_format === 'pbip';
+  btnDownload.disabled = !currentRun.download_available;
   btnDownload.onclick = function() {
-    if (currentRun.source_format === 'pbip') return;
     window.location.href = '/api/history/' + encodeURIComponent(workbookName) + '/' +
       encodeURIComponent(currentRun.run_id) + '/download';
   };
@@ -317,10 +302,6 @@ function renderActions() {
 
 function renderDocLinks(stages) {
   var docsBar = document.getElementById('docsBar');
-  if (currentRun.source_format === 'pbip') {
-    docsBar.style.display = 'none';
-    return;
-  }
   var fddDone = stages.functional_doc && stages.functional_doc.status === 'completed';
   var tddDone = stages.target_technical_doc && stages.target_technical_doc.status === 'completed';
 

@@ -40,7 +40,6 @@ from Tableau2PowerBI.agents.target_technical_doc.chunking import (
     estimate_tokens,
     merge_data_model_results,
     merge_report_results,
-    PromptBudgetError,
 )
 from Tableau2PowerBI.agents.target_technical_doc.models import (
     DataModelDesign,
@@ -308,13 +307,7 @@ class TargetTechnicalDocAgent(Agent):
             budget,
         )
         fixed_tokens = self._estimate_fixed_tokens_call1(func_doc)
-        try:
-            batches = build_datasource_batches(sm_input, budget, fixed_tokens)
-        except PromptBudgetError:
-            self.logger.warning(
-                "Call 1: fixed overhead exceeds budget — fallback to single call"
-            )
-            return self._run_with_validation(prompt, DataModelDesign, "Call 1 (data model, fallback)")
+        batches = build_datasource_batches(sm_input, budget, fixed_tokens)
         self.logger.info("Call 1: split into %d batch(es)", len(batches))
 
         partials: list[DataModelDesign] = []
@@ -356,15 +349,7 @@ class TargetTechnicalDocAgent(Agent):
             budget,
         )
         fixed_tokens = self._estimate_fixed_tokens_call1(func_doc)
-        try:
-            batches = build_datasource_batches(sm_input, budget, fixed_tokens)
-        except PromptBudgetError:
-            self.logger.warning(
-                "Call 1: fixed overhead exceeds budget — fallback to single call"
-            )
-            return await self._run_with_validation_async(
-                prompt, DataModelDesign, "Call 1 (data model, fallback)"
-            )
+        batches = build_datasource_batches(sm_input, budget, fixed_tokens)
         self.logger.info("Call 1: split into %d batch(es)", len(batches))
 
         partials: list[DataModelDesign] = []
@@ -449,13 +434,7 @@ class TargetTechnicalDocAgent(Agent):
             budget,
         )
         fixed_tokens = self._estimate_fixed_tokens_call2(func_doc, data_model)
-        try:
-            batches = build_dashboard_batches(report_input, budget, fixed_tokens)
-        except PromptBudgetError:
-            self.logger.warning(
-                "Call 2: fixed overhead exceeds budget — fallback to single call"
-            )
-            return self._run_with_validation(prompt, ReportDesign, "Call 2 (report, fallback)")
+        batches = build_dashboard_batches(report_input, budget, fixed_tokens)
         self.logger.info("Call 2: split into %d batch(es)", len(batches))
 
         partials: list[ReportDesign] = []
@@ -498,15 +477,7 @@ class TargetTechnicalDocAgent(Agent):
             budget,
         )
         fixed_tokens = self._estimate_fixed_tokens_call2(func_doc, data_model)
-        try:
-            batches = build_dashboard_batches(report_input, budget, fixed_tokens)
-        except PromptBudgetError:
-            self.logger.warning(
-                "Call 2: fixed overhead exceeds budget — fallback to single call"
-            )
-            return await self._run_with_validation_async(
-                prompt, ReportDesign, "Call 2 (report, fallback)"
-            )
+        batches = build_dashboard_batches(report_input, budget, fixed_tokens)
         self.logger.info("Call 2: split into %d batch(es)", len(batches))
 
         partials: list[ReportDesign] = []
