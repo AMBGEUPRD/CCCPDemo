@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Package: agents",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agents"
+    },
+    {
+      "name": "Run Semantic",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "Tableau2PowerBI.cli.run_semantic_model",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      }
+    }
+  ]
+}

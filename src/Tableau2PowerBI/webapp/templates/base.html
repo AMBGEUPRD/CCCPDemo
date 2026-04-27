@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}BIM-AI{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  {% block head_css %}{% endblock %}
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+{% block nav %}
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/>
+      </svg>
+    </div>
+    <span class="nav-logo-text">BIM-<span>AI</span></span>
+  </a>
+  {% block nav_badge %}{% endblock %}
+  {% block nav_breadcrumb %}{% endblock %}
+  <div class="nav-actions">
+    {% block nav_actions %}{% endblock %}
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <span id="themeIcon">&#9790;</span>
+    </button>
+  </div>
+</nav>
+{% endblock %}
+
+{% block stepper %}{% endblock %}
+
+<div id="main-content">
+{% block body %}{% endblock %}
+</div>
+
+{% block scripts_shared %}
+<script>
+/* ── Unified theme toggle (uses 'bim-theme' key everywhere) ── */
+(function() {
+  var toggle = document.getElementById('themeToggle');
+  var icon   = document.getElementById('themeIcon');
+  var html   = document.documentElement;
+  /* Migrate old key used by project.html */
+  if (!localStorage.getItem('bim-theme') && localStorage.getItem('theme')) {
+    localStorage.setItem('bim-theme', localStorage.getItem('theme'));
+    localStorage.removeItem('theme');
+  }
+  var saved = localStorage.getItem('bim-theme');
+  if (saved === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+    if (icon) icon.innerHTML = '\u2604';
+  }
+  if (toggle) {
+    toggle.addEventListener('click', function() {
+      var isDark = html.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        html.removeAttribute('data-theme');
+        if (icon) icon.innerHTML = '\u263E';
+        localStorage.setItem('bim-theme', 'light');
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        if (icon) icon.innerHTML = '\u2604';
+        localStorage.setItem('bim-theme', 'dark');
+      }
+    });
+  }
+})();
+
+/* ── Stepper: propagate session id to stepper links ── */
+(function() {
+  var id = new URLSearchParams(location.search).get('id');
+  if (!id) return;
+  document.querySelectorAll('.process-stepper .step').forEach(function(a) {
+    if (a.href && !a.classList.contains('step--disabled')) {
+      var u = new URL(a.href, location.origin);
+      if (u.pathname !== '/') { u.searchParams.set('id', id); a.href = u.toString(); }
+    }
+  });
+})();
+</script>
+{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

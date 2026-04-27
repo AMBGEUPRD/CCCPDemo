@@ -1,0 +1,2 @@
+# Install core deps + dev extras from pyproject.toml
+-e .[dev]

@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Tableau2PowerBI"
+version = "0.1.0"
+description = "Agentic Tableau to Power BI migration toolkit"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-projects",
+    "azure-ai-agents",
+    "azure-identity>=1.16.0",
+    "azure-core",
+    "azure-identity-broker",
+    "pydantic>=2.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.optional-dependencies]
+webapp = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "python-multipart>=0.0.9",
+    "jinja2>=3.1.0",
+    "azure-storage-file-datalake>=12.14.0",
+    "python-dotenv>=1.0.0",
+]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "setuptools",
+    "wheel",
+    "black",
+    "isort",
+    "flake8",
+    "flake8-bugbear",
+    "flake8-comprehensions",
+]
+
+[project.scripts]
+t2pbi-serve = "Tableau2PowerBI.webapp.__main__:main"
+t2pbi-pipeline = "Tableau2PowerBI.cli.run_pipeline:main"
+t2pbi-extract = "Tableau2PowerBI.cli.run_extraction:main"
+t2pbi-skeleton = "Tableau2PowerBI.cli.run_skeleton:main"
+t2pbi-semantic = "Tableau2PowerBI.cli.run_semantic_model:main"
+t2pbi-assemble = "Tableau2PowerBI.cli.run_assemble_pbip_project:main"
+t2pbi-funcdoc = "Tableau2PowerBI.cli.run_functional_doc:main"
+t2pbi-tdd = "Tableau2PowerBI.cli.run_target_technical_doc:main"
+t2pbi-cancel-stuck-response = "Tableau2PowerBI.cli.cancel_stuck_responses:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"*" = ["SKILL.md"]
+"Tableau2PowerBI.webapp" = ["templates/*.html", "static/*"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = [
+    "eval: live-agent evaluation test (requires Foundry access)",
+    "eval_capture: golden-input capture step",
+    "integration: mark test as requiring a live model endpoint",
+    "snapshot: mark test as comparing against a known-good baseline",
+]
+# By default, skip eval tests (they need live Foundry access).
+# Run them explicitly with: pytest -m eval
+addopts = "-m 'not eval and not eval_capture' --cov=Tableau2PowerBI --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src/Tableau2PowerBI"]
+omit = [
+    "*/webapp/*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+precision = 1
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+    "@overload",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

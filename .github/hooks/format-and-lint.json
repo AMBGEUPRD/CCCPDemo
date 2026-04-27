@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": ".github/hooks/scripts/format-and-lint.sh",
+        "windows": "powershell -ExecutionPolicy Bypass -File .github/hooks/scripts/format-and-lint.ps1",
+        "timeout": 60
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(pytest *)",
+      "Bash(uv *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(powershell *)",
+      "Bash(pwsh *)",
+      "Bash(ls *)",
+      "Bash(dir *)",
+      "Bash(cat *)",
+      "Bash(type *)",
+      "Bash(echo *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(az *)",
+      "Bash(ruff *)",
+      "Bash(black *)",
+      "Bash(flake8 *)",
+      "Bash(mypy *)",
+      "Bash(sphinx-build *)",
+      "Bash(make *)",
+      "*"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File .github/hooks/scripts/format-and-lint.ps1",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

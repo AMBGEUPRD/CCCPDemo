@@ -1,0 +1,2 @@
+# Install core deps + webapp extras from pyproject.toml
+-e .[webapp]

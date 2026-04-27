@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Workflow"
+  short_description: "Run a staged Codex workflow for architecture, implementation, QA, and merge gating"
+  default_prompt: "Run the Codex multi-agent workflow for this task, choose fast or full path, maintain a findings ledger, and use Codex tools according to the skill."

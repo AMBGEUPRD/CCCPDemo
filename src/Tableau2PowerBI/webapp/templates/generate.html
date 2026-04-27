@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}BIM-AI — Generate Power BI Project{% endblock %}
+{% block head_css %}<link rel="stylesheet" href="/static/results-shared.css" />{% endblock %}
+
+{% block stepper %}
+  {% set stepper_active = 4 %}
+  {% set stepper_done = [1, 2, 3] %}
+  {% include "_stepper.html" %}
+{% endblock %}
+
+{% block nav_breadcrumb %}
+  <div class="nav-divider"></div>
+  <a class="btn-ghost" id="backToResults" href="/results">
+    <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 2L1 6.5l5 4.5M1 6.5h11"/>
+    </svg>
+    Back to Report
+  </a>
+  <a class="btn-ghost" id="backToProject" href="/" style="display:none">
+    <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 2L1 6.5l5 4.5M1 6.5h11"/>
+    </svg>
+    Back to Project
+  </a>
+  <span class="nav-crumb">PBIX Generation</span>
+{% endblock %}
+{% block nav_actions %}
+    <a class="btn-ghost" href="/">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2L1 6.5l5 4.5M1 6.5h11"/>
+      </svg>
+      New analysis
+    </a>
+{% endblock %}
+
+{% block body %}
+<main>
+
+  <!-- Error state -->
+  <div class="error-state" id="errorState">
+    <div class="error-icon">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="14" r="8"/><path d="M20 20l6 6"/>
+      </svg>
+    </div>
+    <div class="error-title">No results found</div>
+    <div class="error-sub">Please run an analysis first, or the session may have expired.</div>
+    <a href="/" class="btn-new">&larr; Go to Upload</a>
+  </div>
+
+  <!-- Generate content -->
+  <div id="generateContent" style="display:none; flex-direction:column; gap:32px;">
+
+    <!-- Header -->
+    <div>
+      <div class="page-eyebrow">Power BI Migration</div>
+      <h1 class="page-title" id="genPageTitle">Migrate</h1>
+      <div class="page-meta">
+        <span class="page-meta-item" id="genMeta"></span>
+      </div>
+    </div>
+
+    <!-- ── TDD Generation Section ── -->
+    <div class="tdd-section" id="tddSection">
+      <!-- TDD loading state (shown while generating) -->
+      <div class="tdd-loading" id="tddLoading">
+        <div class="tdd-loading-spinner"></div>
+        <div class="tdd-loading-info">
+          <div class="tdd-loading-title">Generating Technical Design Document...</div>
+          <div class="tdd-loading-phases" style="margin:12px 0 0 0; display:flex; gap:12px; align-items:center; font-size:12px">
+            <div style="display:inline-flex; align-items:center; gap:6px">
+              <div style="width:16px; height:16px; border-radius:50%; background:#e5e7eb; display:flex; align-items:center; justify-content:center; font-size:10px" id="phase1Indicator">1</div>
+              <span style="color:var(--ink2)">Data Model</span>
+            </div>
+            <div style="width:2px; height:2px; border-radius:50%; background:#d1d5db"></div>
+            <div style="display:inline-flex; align-items:center; gap:6px">
+              <div style="width:16px; height:16px; border-radius:50%; background:#e5e7eb; display:flex; align-items:center; justify-content:center; font-size:10px" id="phase2Indicator">2</div>
+              <span style="color:var(--ink2)">Report Design</span>
+            </div>
+          </div>
+          <div class="tdd-loading-sub" style="margin-top:12px">The AI agent is designing the Power BI data model, DAX measures, and report layout.</div>
+        </div>
+      </div>
+
+      <!-- TDD complete state (shown after TDD is ready) -->
+      <div class="tdd-ready" id="tddReady" style="display:none">
+        <div class="tdd-ready-header">
+          <div class="tdd-ready-icon">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 2h10l5 5v11a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M13 2v5h5"/><path d="M6 13l3 3 5-5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="tdd-ready-title">Technical Design Document</div>
+            <div class="tdd-ready-sub" id="tddReadySub">Ready</div>
+          </div>
+        </div>
+        <div class="tdd-ready-actions">
+          <a class="fdd-action fdd-action--teal" id="tddViewHtml" href="#" target="_blank">
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 7v4.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/><path d="M7 1h5v5"/><path d="M5.5 7.5L12 1"/>
+            </svg>
+            View HTML
+          </a>
+          <a class="fdd-action fdd-action--indigo" id="tddDownloadMd" href="#" download>
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/>
+            </svg>
+            Download MD
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Migration Assessment (shown after TDD) ── -->
+    <div class="migration-assessment" id="migrationAssessment" style="display:none">
+      <div class="section-header" style="border-bottom:none;padding:14px 20px">
+        <div class="section-icon amber">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 2l7 12H2L9 2z"/><path d="M9 7v3"/><circle cx="9" cy="12.5" r=".5" fill="#d97706"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Migration Assessment</div>
+          <div class="section-sub">Warnings and feasibility notes from the technical design</div>
+        </div>
+      </div>
+      <div class="migration-assessment-body" id="assessmentBody"></div>
+    </div>
+
+    <!-- ── Generate PBIX button ── -->
+    <div class="generate-cta" id="generateCta" style="display:none">
+      <div class="generate-cta-title">Ready to generate the Power BI project?</div>
+      <div class="generate-cta-sub">Run the AI agent pipeline to create the <strong>.pbip</strong> project &mdash; skeleton, semantic model, DAX measures, visuals, and final assembly.</div>
+      <div class="pipeline-preview">
+        <div class="pp-step"><div class="pp-dot"></div>Skeleton</div>
+        <div class="pp-arrow">&rarr;</div>
+        <div class="pp-step"><div class="pp-dot"></div>Semantic Model</div>
+        <div class="pp-arrow">&rarr;</div>
+        <div class="pp-step"><div class="pp-dot"></div>DAX</div>
+        <div class="pp-arrow">&rarr;</div>
+        <div class="pp-step"><div class="pp-dot"></div>Visuals</div>
+        <div class="pp-arrow">&rarr;</div>
+        <div class="pp-step"><div class="pp-dot"></div>Assembler</div>
+      </div>
+      <button class="btn-generate" id="generateBtn">
+        <div class="btn-icon-wrap">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9.5h4l-2 5L13 6.5H9l2-5L4 9.5z"/>
+          </svg>
+        </div>
+        Generate Power BI Project
+      </button>
+    </div>
+
+    <!-- ── PBIX Results ── -->
+    <div class="pbix-results" id="pbixResults">
+      <div class="pbix-header">
+        <div class="pbix-header-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="4" height="8" rx="1"/><rect x="9" y="7" width="4" height="12" rx="1"/><rect x="15" y="3" width="4" height="16" rx="1"/>
+          </svg>
+        </div>
+        <div class="pbix-header-text">
+          <div class="pbix-title">Power BI Generation Complete</div>
+          <div class="pbix-sub" id="pbixSub">Results from the migration pipeline</div>
+        </div>
+        <span class="pbix-status-badge" id="pbixStatusBadge">&mdash;</span>
+      </div>
+      <div class="agent-cards" id="agentCards"></div>
+    </div>
+
+    <div class="cta-row">
+      <a id="backToResultsBottom" href="/results" class="btn-new">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L1 6.5l5 4.5M1 6.5h11"/>
+        </svg>
+        Back to Analysis
+      </a>
+      <a href="/" class="btn-new" style="background:linear-gradient(135deg,var(--violet),var(--indigo))">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1v14M1 8h14"/>
+        </svg>
+        Analyze another workbook
+      </a>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Pipeline Progress Overlay ── -->
+<div class="pipeline-overlay" id="pipelineOverlay">
+  <div class="pipeline-modal">
+    <div class="pm-header">
+      <div class="pm-title">Generating Power BI Project...</div>
+      <div class="pm-sub">The AI agents are working in sequence. This may take a few minutes.</div>
+    </div>
+    <div class="pm-progress-wrap">
+      <div class="pm-progress-bar-bg"><div class="pm-progress-bar-fill" id="pmFill"></div></div>
+      <div class="pm-progress-label" id="pmLabel">0 / 4 agents completed</div>
+    </div>
+    <div class="pm-steps" id="pmSteps">
+      <div class="pm-step" id="ps-skeleton" style="display:none">
+        <div class="pm-step-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="6" height="6" rx="1.5"/><rect x="10" y="2" width="6" height="6" rx="1.5"/><rect x="2" y="10" width="6" height="6" rx="1.5"/><path d="M10 13h6M13 10v6"/>
+          </svg>
+        </div>
+        <div class="pm-step-info">
+          <div class="pm-step-name">Project Skeleton</div>
+          <div class="pm-step-status" id="pss-skeleton">Waiting...</div>
+        </div>
+        <div class="pm-step-check" id="psc-skeleton">&ndash;</div>
+      </div>
+      <div class="pm-step-connector" id="pmc-hidden" style="display:none"></div>
+      <div class="pm-step" id="ps-semantic">
+        <div class="pm-step-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="2.5"/><circle cx="9" cy="2.5" r="1.5"/><circle cx="15.5" cy="12.5" r="1.5"/><circle cx="2.5" cy="12.5" r="1.5"/>
+            <line x1="9" y1="4" x2="9" y2="6.5"/><line x1="14.2" y1="11.2" x2="11.1" y2="10"/><line x1="3.8" y1="11.2" x2="6.9" y2="10"/>
+          </svg>
+        </div>
+        <div class="pm-step-info">
+          <div class="pm-step-name">Semantic Model Generator</div>
+          <div class="pm-step-status" id="pss-semantic">Waiting...</div>
+        </div>
+        <div class="pm-step-check" id="psc-semantic">&ndash;</div>
+      </div>
+      <div class="pm-step-connector" id="pmc-0"></div>
+      <div class="pm-step" id="ps-dax">
+        <div class="pm-step-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9h3l2-5 4 10 2-5h3"/>
+          </svg>
+        </div>
+        <div class="pm-step-info">
+          <div class="pm-step-name">DAX Generator</div>
+          <div class="pm-step-status" id="pss-dax">Waiting...</div>
+        </div>
+        <div class="pm-step-check" id="psc-dax">&ndash;</div>
+      </div>
+      <div class="pm-step-connector" id="pmc-1"></div>
+      <div class="pm-step" id="ps-visuals">
+        <div class="pm-step-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="12" width="3" height="4" rx="1"/><rect x="7.5" y="8" width="3" height="8" rx="1"/><rect x="13" y="4" width="3" height="12" rx="1"/>
+            <path d="M3.5 11L7.5 7l3 3 4-5"/>
+          </svg>
+        </div>
+        <div class="pm-step-info">
+          <div class="pm-step-name">Visuals Generator</div>
+          <div class="pm-step-status" id="pss-visuals">Waiting...</div>
+          <div id="subAgentPanel" style="display:none;margin-top:8px">
+            <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Page Sub-Agents</div>
+            <div id="subAgentPages" style="display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto"></div>
+          </div>
+        </div>
+        <div class="pm-step-check" id="psc-visuals">&ndash;</div>
+      </div>
+      <div class="pm-step-connector" id="pmc-2"></div>
+      <div class="pm-step" id="ps-assembler">
+        <div class="pm-step-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 2l7 4v6l-7 4-7-4V6l7-4z"/><path d="M9 2v14M2 6l7 4 7-4"/>
+          </svg>
+        </div>
+        <div class="pm-step-info">
+          <div class="pm-step-name">Project Assembler</div>
+          <div class="pm-step-status" id="pss-assembler">Waiting...</div>
+        </div>
+        <div class="pm-step-check" id="psc-assembler">&ndash;</div>
+      </div>
+    </div>
+    <div class="terminal-wrap" style="width:100%;margin-top:8px">
+      <div class="terminal-header">
+        <span class="t-dot t-red"></span>
+        <span class="t-dot t-yellow"></span>
+        <span class="t-dot t-green"></span>
+        <span class="t-title">Pipeline Output</span>
+      </div>
+      <div class="log-console" id="logConsole"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/results-shared.js"></script>
+<script src="/static/results-generate.js"></script>
+<script>
+  /* Wire up back-to-results links with the session id */
+  (function() {
+    var id = new URLSearchParams(location.search).get('id');
+    if (id) {
+      var backUrl = '/results?id=' + encodeURIComponent(id);
+      var el1 = document.getElementById('backToResults');
+      var el2 = document.getElementById('backToResultsBottom');
+      if (el1) el1.href = backUrl;
+      if (el2) el2.href = backUrl;
+    }
+  })();
+</script>
+{% endblock %}

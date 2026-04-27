@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+{% block title %}BIM-AI — Analysis Report{% endblock %}
+{% block head_css %}
+  <link rel="stylesheet" href="/static/results-shared.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block stepper %}
+  {% set stepper_active = 2 %}
+  {% set stepper_done = [1] %}
+  {% include "_stepper.html" %}
+{% endblock %}
+
+{% block nav_breadcrumb %}
+  <div class="nav-divider"></div>
+  <span class="nav-crumb">Migration Report</span>
+{% endblock %}
+{% block nav_actions %}
+    <button class="nav-btn nav-btn--green" id="generateFddBtn">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 2h6l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M8 2v3h3"/><path d="M4 8l2 2 3-3"/>
+      </svg>
+      <span id="fddBtnLabel">Generate FDD</span>
+      <div class="spinner-ring-sm" id="fddSpinner"></div>
+    </button>
+    <button class="nav-btn nav-btn--slate" id="copyRawBtn">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="8" height="8" rx="1.5"/><path d="M1 1h6.5v3"/>
+      </svg>
+      Copy JSON
+    </button>
+    <a class="nav-btn nav-btn--violet" id="migrateBtn" href="/generate" style="display:none">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7h4l-1.5 4L10 5H6l1.5-3L3 7z"/>
+      </svg>
+      Migrate to Power BI
+    </a>
+    <a class="nav-btn nav-btn--slate" href="/">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2L1 6.5l5 4.5M1 6.5h11"/>
+      </svg>
+      New analysis
+    </a>
+    <a class="nav-btn nav-btn--violet" id="backToProjectLink" href="/" style="display:none">
+      <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="9" height="9" rx="1.5"/><path d="M2 5.5h9M5.5 11V5.5"/>
+      </svg>
+      Back to Project
+    </a>
+{% endblock %}
+
+{% block body %}
+<main>
+
+  <!-- Error state -->
+  <div class="error-state" id="errorState">
+    <div class="error-icon">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="14" r="8"/><path d="M20 20l6 6"/>
+      </svg>
+    </div>
+    <div class="error-title">No results found</div>
+    <div class="error-sub">Please run an analysis first, or the session may have expired.</div>
+    <a href="/" class="btn-new">&larr; Go to Upload</a>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsContent" style="display:none; flex-direction:column; gap:32px;">
+
+    <!-- Header -->
+    <div>
+      <div class="page-eyebrow">Analysis complete</div>
+      <h1 class="page-title" id="pageTitle">Report</h1>
+      <div class="page-meta">
+        <span class="page-meta-item" id="metaDate"></span>
+        <span class="page-meta-item" id="metaFile"></span>
+      </div>
+    </div>
+
+    <!-- ADLS -->
+    <div class="adls-strip" id="adlsStrip">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 10a3 3 0 0 0-1-5.83A5 5 0 0 0 2 7.5a3 3 0 0 0 0 6h10a3 3 0 0 0 0-6 3 3 0 0 0 0 0z"/></svg>
+      <span>Saved to ADLS:</span>
+      <span class="adls-path" id="adlsPath"></span>
+    </div>
+
+    <!-- FDD section (loading + ready states, like TDD on Page 3) -->
+    <div class="fdd-section" id="fddSection" style="display:none">
+      <!-- FDD loading state -->
+      <div class="fdd-loading" id="fddLoading">
+        <div class="fdd-loading-spinner"></div>
+        <div class="fdd-loading-info">
+          <div class="fdd-loading-title">Generating Functional Documentation...</div>
+          <div class="fdd-loading-sub">The AI agent is analysing the Tableau workbook and writing the functional specification.</div>
+        </div>
+      </div>
+
+      <!-- FDD complete state -->
+      <div class="fdd-ready" id="fddReady" style="display:none">
+        <div class="fdd-ready-header">
+          <div class="fdd-ready-icon">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-4-5z"/><path d="M13 2v5h4"/><path d="M7 11h6M7 14h6M7 8h1"/>
+            </svg>
+          </div>
+          <div>
+            <div class="fdd-ready-title">Functional Documentation</div>
+            <div class="fdd-ready-sub">Ready</div>
+          </div>
+        </div>
+        <div class="fdd-ready-actions">
+          <a class="fdd-action fdd-action--teal" id="fddViewHtml" href="#" target="_blank">
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 7v4.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/><path d="M7 1h5v5"/><path d="M5.5 7.5L12 1"/>
+            </svg>
+            View HTML
+          </a>
+          <a class="fdd-action fdd-action--indigo" id="fddDownloadMd" href="#" download>
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/>
+            </svg>
+            Download MD
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI tiles -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Data Overview charts -->
+    <div class="charts-row" id="chartsRow" style="display:none">
+      <div class="chart-card">
+        <div class="chart-card-title" id="chartCard1Title">Semantic Object Mix</div>
+        <div class="chart-card-sub" id="chartCard1Sub">Key extracted objects by category</div>
+        <div class="chart-canvas-wrap" style="height:240px;position:relative">
+          <canvas id="chartFieldTypes"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title" id="chartCard2Title">Fields per Source</div>
+        <div class="chart-card-sub" id="chartCard2Sub">Field counts grouped by source object</div>
+        <div class="chart-canvas-wrap" id="chartDatasourceWrap" style="position:relative">
+          <canvas id="chartDatasourceCols"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar" id="tabBar" role="tablist">
+      <button class="tab-btn active" data-tab="data" role="tab" aria-selected="true">Data Details <span class="tab-count" id="tabCountData"></span></button>
+      <button class="tab-btn" data-tab="docs" role="tab" aria-selected="false">Documentation</button>
+      <button class="tab-btn" data-tab="warnings" role="tab" aria-selected="false">Warnings <span class="tab-count" id="tabCountWarnings"></span></button>
+    </div>
+
+    <!-- Tab: Data Details -->
+    <div class="tab-panel active" id="tabData" role="tabpanel">
+
+    <!-- Datasources -->
+    <div class="section-card" id="cardDatasources">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon blue">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="9" cy="5" rx="7" ry="2.5"/><path d="M2 5v4c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5V5"/><path d="M2 9v4c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5V9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Data Sources</div>
+          <div class="section-sub">Connections and source tables</div>
+        </div>
+        <span class="section-badge" id="badgeDatasources">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableDatasources" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableDatasources" data-filename="datasources.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableDatasources">
+        <thead><tr><th>Name <span class="sort-indicator">&#9650;&#9660;</span></th><th>Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>File / Table <span class="sort-indicator">&#9650;&#9660;</span></th><th>Columns <span class="sort-indicator">&#9650;&#9660;</span></th><th>Calc. Fields <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Columns -->
+    <div class="section-card" id="cardColumns">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon teal">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#0d9488" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="2" width="12" height="14" rx="2"/><path d="M6 6h6M6 9h6M6 12h4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Columns</div>
+          <div class="section-sub">All fields across data sources</div>
+        </div>
+        <span class="section-badge" id="badgeColumns">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableColumns" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableColumns" data-filename="columns.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableColumns">
+        <thead><tr><th>Field <span class="sort-indicator">&#9650;&#9660;</span></th><th>Data Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>Role <span class="sort-indicator">&#9650;&#9660;</span></th><th>Semantic Role <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Calculated columns -->
+    <div class="section-card" id="cardCalcColumns" style="display:none">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon purple">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 5h2M7 5h8M3 9h8M13 9h2M3 13h2M7 13h8"/><circle cx="5.5" cy="9" r="1.5"/><circle cx="12" cy="5" r="1.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Calculated Columns</div>
+          <div class="section-sub">Column-level DAX and formulas</div>
+        </div>
+        <span class="section-badge" id="badgeCalcColumns">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableCalcColumns" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableCalcColumns" data-filename="calculated_columns.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableCalcColumns">
+        <thead><tr><th>Table <span class="sort-indicator">&#9650;&#9660;</span></th><th>Column <span class="sort-indicator">&#9650;&#9660;</span></th><th>Data Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>DAX <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Calculated fields -->
+    <div class="section-card" id="cardCalc">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon purple">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 5h2M7 5h8M3 9h8M13 9h2M3 13h2M7 13h8"/><circle cx="5.5" cy="9" r="1.5"/><circle cx="12" cy="5" r="1.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Calculated Fields</div>
+          <div class="section-sub">Custom expressions and formulas</div>
+        </div>
+        <span class="section-badge" id="badgeCalc">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableCalc" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableCalc" data-filename="calculated_fields.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableCalc">
+        <thead><tr><th>Source <span class="sort-indicator">&#9650;&#9660;</span></th><th>Name <span class="sort-indicator">&#9650;&#9660;</span></th><th>Data Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>Formula <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Worksheets -->
+    <div class="section-card" id="cardWorksheets">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon amber">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="11" width="3" height="5" rx="1"/><rect x="7.5" y="7" width="3" height="9" rx="1"/><rect x="13" y="3" width="3" height="13" rx="1"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Worksheets</div>
+          <div class="section-sub">Individual charts and views</div>
+        </div>
+        <span class="section-badge" id="badgeWorksheets">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableWorksheets" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableWorksheets" data-filename="worksheets.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableWorksheets">
+        <thead><tr><th>Sheet <span class="sort-indicator">&#9650;&#9660;</span></th><th>Mark Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>Columns shelf <span class="sort-indicator">&#9650;&#9660;</span></th><th>Rows shelf <span class="sort-indicator">&#9650;&#9660;</span></th><th>Filters <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Dashboards -->
+    <div class="section-card" id="cardDashboards">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon green">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#059669" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="14" height="10" rx="2"/><path d="M6 16h6M9 13v3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Dashboards</div>
+          <div class="section-sub">Composed views and layout</div>
+        </div>
+        <span class="section-badge" id="badgeDashboards">&mdash;</span>
+        <div class="section-controls">
+          <input type="text" class="table-search" data-table="tablePageVisuals" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tablePageVisuals" data-filename="page_visuals.csv" title="Export to CSV">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v8M5 7l3 3 3-3M3 14h10"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+        <div class="table-wrap">
+          <table class="data-table" id="tablePageVisuals">
+            <thead><tr><th>Page <span class="sort-indicator">&#9650;&#9660;</span></th><th>Category <span class="sort-indicator">&#9650;&#9660;</span></th><th>Visual <span class="sort-indicator">&#9650;&#9660;</span></th><th>Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>Fields <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+            <tbody id="dashboardBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="section-card" id="cardParams" style="display:none">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon teal">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#0d9488" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 5h12M3 9h12M3 13h12"/><circle cx="7" cy="5" r="1.5" fill="#0d9488"/><circle cx="11" cy="9" r="1.5" fill="#0d9488"/><circle cx="6" cy="13" r="1.5" fill="#0d9488"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Parameters</div>
+          <div class="section-sub">Interactive controls</div>
+        </div>
+        <span class="section-badge" id="badgeParams">&mdash;</span>
+        <div class="table-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l2.5 2.5"/></svg>
+          <input type="text" class="table-search" data-table="tableParams" placeholder="Filter..." autocomplete="off" />
+        </div>
+        <button class="btn-export-csv" data-table="tableParams" data-filename="parameters.csv" title="Export to CSV">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1"/>
+          </svg>
+        </button>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+      <table class="data-table" id="tableParams">
+        <thead><tr><th>Name <span class="sort-indicator">&#9650;&#9660;</span></th><th>Caption <span class="sort-indicator">&#9650;&#9660;</span></th><th>Data Type <span class="sort-indicator">&#9650;&#9660;</span></th><th>Default Value <span class="sort-indicator">&#9650;&#9660;</span></th><th>Domain <span class="sort-indicator">&#9650;&#9660;</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Raw JSON toggle -->
+    <div>
+      <div class="raw-toggle-bar" id="rawToggle">
+        <span class="raw-toggle-label">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 3L1 7l3 4M10 3l3 4-3 4M8 2l-2 10"/>
+          </svg>
+          Raw JSON output
+        </span>
+        <span class="raw-toggle-chevron" id="rawChevron">&#x25BC;</span>
+      </div>
+      <div class="raw-box" id="rawBox">
+        <pre id="rawPre"></pre>
+      </div>
+    </div>
+
+    <!-- Run History -->
+    <div class="section-card" id="cardHistory" style="display:none">
+      <div class="glass-border"></div>
+      <div class="section-header">
+        <div class="section-icon violet">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/>
+          </svg>
+        </div>
+        <div>
+          <div class="section-title">Run History</div>
+          <div class="section-sub">Previous runs for this workbook</div>
+        </div>
+        <span class="section-badge" id="badgeHistory">&mdash;</span>
+        <button class="btn-collapse" title="Collapse section" aria-label="Toggle section" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4.5l4.5 4.5 4.5-4.5"/>
+          </svg>
+        </button>
+      </div>
+      <div class="section-card-body">
+        <div id="historyRunsList" style="display:flex;flex-direction:column;gap:8px;padding:16px 20px"></div>
+      </div>
+    </div>
+    </div> <!-- /tabData -->
+
+    <!-- Tab: Documentation (FDD) -->
+    <div class="tab-panel" id="tabDocs" role="tabpanel">
+      <div class="tab-empty" id="docsEmpty">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.45">
+          <path d="M18 4H8a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9l-5-5z"/><path d="M18 4v5h5"/><path d="M10 13h8M10 17h5"/>
+        </svg>
+        <div style="font-size:13px;color:var(--muted)">Click "Generate FDD" in the nav bar to create functional documentation.</div>
+      </div>
+    </div>
+
+    <!-- Tab: Warnings -->
+    <div class="tab-panel" id="tabWarnings" role="tabpanel">
+      <div class="tab-empty" id="warningsEmpty">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.45">
+          <path d="M14 5L3 23h22L14 5z"/><path d="M14 12v5"/><circle cx="14" cy="20" r="0.5" fill="currentColor"/>
+        </svg>
+        <div style="font-size:13px;color:var(--muted)">Warnings will appear here after migration. <a id="warningsLink" href="/warnings" style="color:var(--violet)">Open warnings page &rarr;</a></div>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <a href="/" class="btn-new">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1v14M1 8h14"/>
+        </svg>
+        Analyze another source
+      </a>
+    </div>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/results-shared.js"></script>
+<script src="/static/results-analysis.js"></script>
+<script>
+  /* Wire up warnings link with session id */
+  (function() {
+    var id = new URLSearchParams(location.search).get('id');
+    if (id) {
+      var warnEl = document.getElementById('warningsLink');
+      if (warnEl) warnEl.href = '/warnings?id=' + encodeURIComponent(id);
+    }
+  })();
+
+  /* Tab bar switching */
+  (function() {
+    var bar = document.getElementById('tabBar');
+    if (!bar) return;
+    bar.addEventListener('click', function(e) {
+      var btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      var tab = btn.dataset.tab;
+      bar.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(function(p) {
+        p.classList.toggle('active', p.id === 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+      });
+    });
+
+    /* Move FDD section into Documentation tab if present */
+    var fdd = document.getElementById('fddSection');
+    var docsTab = document.getElementById('tabDocs');
+    var docsEmpty = document.getElementById('docsEmpty');
+    if (fdd && docsTab) {
+      docsTab.insertBefore(fdd, docsEmpty);
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+{#
+  Process stepper include.
+  Expects a variable `stepper_active` (int 1-5) for the current step.
+  Optionally `stepper_done` (list of ints) for completed steps.
+  Steps: 1=Upload  2=Analysis  3=Documentation  4=Migration  5=Review
+#}
+{% set steps = [
+  (1, "Upload",        "/"),
+  (2, "Analysis",      "/results"),
+  (3, "Documentation", "/results"),
+  (4, "Migration",     "/generate"),
+  (5, "Review",        "/warnings"),
+] %}
+<div class="process-stepper" role="navigation" aria-label="Migration progress">
+  {% for num, label, href in steps %}
+    {% if not loop.first %}
+      <div class="step-connector"></div>
+    {% endif %}
+    {% set is_active = (stepper_active == num) %}
+    {% set is_done   = (stepper_done is defined and num in stepper_done) %}
+    {% set is_disabled = (not is_active and not is_done and num > stepper_active|default(1)) %}
+    <a class="step{% if is_active %} step--active{% endif %}{% if is_done %} step--done{% endif %}{% if is_disabled %} step--disabled{% endif %}"
+       href="{{ href }}"{% if is_disabled %} tabindex="-1" aria-disabled="true"{% endif %}>
+      {% if is_done %}
+        <svg class="step-check" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5"/></svg>
+      {% else %}
+        <span class="step-num">{{ num }}</span>
+      {% endif %}
+      <span class="step-label">{{ label }}</span>
+    </a>
+  {% endfor %}
+</div>

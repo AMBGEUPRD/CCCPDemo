@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Project — BIM-AI{% endblock %}
+{% block head_css %}
+  <link rel="stylesheet" href="/static/results-shared.css" />
+  <link rel="stylesheet" href="/static/project.css" />
+{% endblock %}
+
+{% block nav_breadcrumb %}
+  <div class="nav-divider"></div>
+  <a class="btn-ghost" href="/" style="font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L1 6l5 4M1 6h10"/></svg>
+    Projects
+  </a>
+  <div class="nav-divider"></div>
+  <span class="nav-crumb">Project Dashboard</span>
+{% endblock %}
+
+{% block body %}
+<div id="projectContent">
+
+  <!-- Header -->
+  <div class="project-header">
+    <div class="project-title" id="projectTitle">Loading…</div>
+    <div class="project-meta">
+      <span class="project-badge in_progress" id="projectStatus">Loading…</span>
+      <span id="projectExt" style="font-family:var(--mono);font-size:11px;background:var(--indigo-l);color:var(--indigo);padding:2px 8px;border-radius:6px"></span>
+      <span id="projectDate" style="color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="actions-bar">
+    <button class="action-btn secondary" id="btnReport" disabled>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 2h6l3 3v7H2z"/><path d="M8 2v3h3"/>
+      </svg>
+      View Analysis Report
+    </button>
+    <button class="action-btn primary" id="btnRegen" disabled>Re-generate Selected</button>
+    <button class="action-btn download" id="btnDownload" disabled>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 2v8M3 7l4 4 4-4"/><path d="M2 12h10"/>
+      </svg>
+      Download PBIP
+    </button>
+  </div>
+
+  <!-- Documents -->
+  <div class="docs-section" id="docsBar" style="display:none">
+    <div class="pipeline-section-title">Documents</div>
+    <div class="docs-grid">
+
+      <!-- FDD card -->
+      <div class="fdd-section" id="docFddCard" style="display:none">
+        <div class="fdd-ready" style="display:flex">
+          <div class="fdd-ready-header">
+            <div class="fdd-ready-icon">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-4-5z"/><path d="M13 2v5h4"/><path d="M7 11h6M7 14h6M7 8h1"/>
+              </svg>
+            </div>
+            <div>
+              <div class="fdd-ready-title">Functional Documentation</div>
+              <div class="fdd-ready-sub">✓ Available</div>
+            </div>
+          </div>
+          <div class="fdd-ready-actions">
+            <a class="fdd-action fdd-action--teal" id="docFddHtml" href="#" target="_blank">
+              <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 7v4.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/><path d="M7 1h5v5"/><path d="M5.5 7.5L12 1"/>
+              </svg>
+              View HTML
+            </a>
+            <a class="fdd-action fdd-action--indigo" id="docFddMd" href="#" download>
+              <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/>
+              </svg>
+              Download MD
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- TDD card -->
+      <div class="fdd-section" id="docTddCard" style="display:none;border-color:rgba(99,102,241,.25)">
+        <div class="fdd-ready" style="display:flex">
+          <div class="fdd-ready-header">
+            <div class="fdd-ready-icon" style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.2)">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2h10l5 5v11a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M13 2v5h5"/><path d="M6 13l3 3 5-5"/>
+              </svg>
+            </div>
+            <div>
+              <div class="fdd-ready-title">Technical Design Document</div>
+              <div class="fdd-ready-sub" style="color:var(--indigo, #6366f1)">✓ Available</div>
+            </div>
+          </div>
+          <div class="fdd-ready-actions">
+            <a class="fdd-action fdd-action--teal" id="docTddHtml" href="#" target="_blank">
+              <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 7v4.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/><path d="M7 1h5v5"/><path d="M5.5 7.5L12 1"/>
+              </svg>
+              View HTML
+            </a>
+            <a class="fdd-action fdd-action--indigo" id="docTddMd" href="#" download>
+              <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.5 1v8M3.5 6l3 3 3-3"/><path d="M1 10v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"/>
+              </svg>
+              Download MD
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="force-banner" id="forceBanner"></div>
+
+  <!-- Pipeline stages -->
+  <div class="pipeline-section">
+    <div class="pipeline-section-title">Pipeline Stages</div>
+    <div class="pipeline-grid" id="pipelineGrid"></div>
+  </div>
+
+  <!-- Run history -->
+  <div class="runs-section">
+    <div class="pipeline-section-title">Run History</div>
+    <div id="runsList"></div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/project.js"></script>
+{% endblock %}
