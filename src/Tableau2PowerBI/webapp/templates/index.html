@@ -24,24 +24,54 @@
       </div>
     </div>
 
-    <div class="dz" id="dz" data-upload-limit-bytes="{{ upload_limit_bytes }}" data-upload-limit-mb="{{ upload_limit_mb }}" tabindex="0" role="button" aria-label="Upload a Tableau workbook file">
-      <input type="file" id="fi" accept=".twb,.twbx" />
-      <div class="dz-graphic">
-        <div class="dz-graphic-bg">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10 22l6-6 6 6" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M16 16v10" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
-            <path d="M26.5 20.5A5.5 5.5 0 0 0 21 15h-1.28A9 9 0 1 0 7 23.5" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <div class="dz-row">
+      <div class="dz" id="dz" data-upload-limit-bytes="{{ upload_limit_bytes }}" data-upload-limit-mb="{{ upload_limit_mb }}" tabindex="0" role="button" aria-label="Upload a Tableau workbook file">
+        <input type="file" id="fi" accept=".twb,.twbx" />
+        <div class="dz-graphic">
+          <div class="dz-graphic-bg">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 22l6-6 6 6" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 16v10" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+              <path d="M26.5 20.5A5.5 5.5 0 0 0 21 15h-1.28A9 9 0 1 0 7 23.5" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="dz-badge">+</div>
+        </div>
+        <div class="dz-title">Drop your file here</div>
+        <div class="dz-sub">or click to browse your computer</div>
+        <div class="dz-chips">
+          <span class="dz-chip">.twb</span>
+          <span class="dz-chip">.twbx</span>
+          <span class="dz-chip">max {{ upload_limit_mb }} MB</span>
+        </div>
+      </div>
+      <div class="dz-brand-stack">
+        <!-- Tableau -->
+        <div class="dz-brand-icon" title="Tableau">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="14.5" y="2" width="3" height="28" rx="1.5" fill="#E97627"/>
+            <rect x="2" y="14.5" width="28" height="3" rx="1.5" fill="#E97627"/>
+            <rect x="10" y="6" width="2.5" height="20" rx="1.25" fill="#5B9BD5"/>
+            <rect x="6" y="10" width="20" height="2.5" rx="1.25" fill="#5B9BD5"/>
+            <rect x="19.5" y="6" width="2.5" height="20" rx="1.25" fill="#5B9BD5"/>
+            <rect x="6" y="19.5" width="20" height="2.5" rx="1.25" fill="#5B9BD5"/>
           </svg>
         </div>
-        <div class="dz-badge">+</div>
-      </div>
-      <div class="dz-title">Drop your file here</div>
-      <div class="dz-sub">or click to browse your computer</div>
-      <div class="dz-chips">
-        <span class="dz-chip">.twb</span>
-        <span class="dz-chip">.twbx</span>
-        <span class="dz-chip">max {{ upload_limit_mb }} MB</span>
+        <!-- Power BI -->
+        <div class="dz-brand-icon" title="Power BI">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3"  y="16" width="6" height="13" rx="2" fill="#F2C811"/>
+            <rect x="13" y="10" width="6" height="19" rx="2" fill="#F2C811" opacity=".85"/>
+            <rect x="23" y="4"  width="6" height="25" rx="2" fill="#F2C811" opacity=".7"/>
+          </svg>
+        </div>
+        <!-- Excel -->
+        <div class="dz-brand-icon" title="Excel">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="26" height="26" rx="4" fill="#217346"/>
+            <path d="M9 10l4.5 6L9 22h3l3-4.5 3 4.5h3l-4.5-6 4.5-6h-3l-3 4.5-3-4.5H9z" fill="#fff"/>
+          </svg>
+        </div>
       </div>
     </div>
 

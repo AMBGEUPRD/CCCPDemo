@@ -1,0 +1,15 @@
+{
+  "id": "cmp_20260428T162817_239725",
+  "created_at": "2026-04-28T16:28:17.239725+00:00",
+  "status": "complete",
+  "workbook_names": [
+    "Supermercato",
+    "VG Contest_Super Sample Superstore_Ryan Sleeper"
+  ],
+  "verdict_summary": {
+    "merge_count": 0,
+    "separate_count": 0,
+    "borderline_count": 1
+  },
+  "error": null
+}

@@ -254,9 +254,9 @@ class HistoryEndpointTests(unittest.TestCase):
                 self.assertEqual(resp.status_code, 200)
                 data = resp.json()
                 item = data[0]
-                # completion_pct: 1 completed out of 8 total stages
+                # completion_pct: 1 completed out of 3 total stages
                 self.assertIn("completion_pct", item)
-                self.assertEqual(item["completion_pct"], 12)  # round(1/8*100) = 12
+                self.assertEqual(item["completion_pct"], 33)  # round(1/3*100) = 33
                 self.assertIn("total_runs", item)
                 self.assertEqual(item["total_runs"], 1)
                 self.assertIn("latest_status", item)
@@ -282,10 +282,9 @@ class HistoryEndpointTests(unittest.TestCase):
                 run = data[0]
                 self.assertIn("stages_full", run)
                 stages_full = run["stages_full"]
-                # All 8 STAGE_GRAPH stages are present
-                self.assertEqual(len(stages_full), 8)
+                # All 3 STAGE_GRAPH stages are present
+                self.assertEqual(len(stages_full), 3)
                 self.assertEqual(stages_full["metadata_extractor"]["status"], "completed")
-                self.assertEqual(stages_full["assembler"]["status"], "not_attempted")
                 # Upstream dependency info is present
                 self.assertEqual(stages_full["metadata_extractor"]["upstream"], [])
                 self.assertEqual(stages_full["functional_doc"]["upstream"], ["metadata_extractor"])

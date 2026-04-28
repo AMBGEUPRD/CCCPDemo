@@ -36,14 +36,14 @@ from pathlib import Path
 _DEFAULT_ENDPOINT = "https://bimigrator-resource.services.ai.azure.com" "/api/projects/bimigrator"
 
 # Maps model deployment names to the backend type they require.
-# "responses" → OpenAI Responses API (GPT, o-series)
+# "foundry" → Azure AI Foundry Agents API (system prompt stored server-side)
 _DEFAULT_MODEL_BACKENDS: dict[str, str] = {
-    "gpt-4.1": "responses",
-    "gpt-4.1-mini": "responses",
-    "gpt-4.1-nano": "responses",
-    "gpt-5.4": "responses",
-    "o3": "responses",
-    "o4-mini": "responses",
+    "gpt-4.1": "foundry",
+    "gpt-4.1-mini": "foundry",
+    "gpt-4.1-nano": "foundry",
+    "gpt-5.4": "foundry",
+    "o3": "foundry",
+    "o4-mini": "foundry",
 }
 
 # Maps per-agent config field names to their environment variable names.
@@ -88,13 +88,13 @@ class AgentSettings:
         model_functional_doc: Model for the functional doc agent.
         model_warnings_reviewer: Model for the warnings reviewer agent.
         model_backends: Maps model deployment names → backend types.
-        tdd_max_prompt_tokens: Token budget for TDD prompts before chunking is triggered.
+        tdd_max_prompt_tokens: Token budget for TDD prompts before chunking.
     """
 
     project_endpoint: str
     tenant_id: str = ""
     default_model: str = "gpt-4.1"
-    openai_api_version: str = "2025-01-01-preview"
+    openai_api_version: str = "2025-03-01-preview"
     request_timeout_seconds: int = 300
     stream_timeout_seconds: int = 300
     prompt_warning_kb: int = 80

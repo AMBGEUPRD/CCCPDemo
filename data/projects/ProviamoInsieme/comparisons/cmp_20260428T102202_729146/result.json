@@ -1,0 +1,38 @@
+{
+  "executive_summary": "The two Tableau reports, 'Supermercato' and 'Netfix Workbook,' serve fundamentally different business purposes and operate on incompatible data models. The Supermercato workbook is a multidimensional sales and operational performance report for a supermarket business, while the Netfix Workbook analyzes the Netflix content catalog. There is no overlap in KPIs, audience, nor data structure, so they must remain separate in a Power BI migration.",
+  "profiles": {
+    "Supermercato": "Supermercato analyzes sales, customer segmentation, order fulfillment, product performance, shipping metrics, and sales commissions from a supermarket transactional database. Its audience includes sales managers, finance, operations, and executives, all seeking operational, sales, and compensation insights across products, customers, regions, and segments.",
+    "Netfix Workbook": "Netfix Workbook provides an in-depth analysis of the Netflix content catalog, focusing on title distribution by release year, genre, country, rating, and duration. The workbook is designed for content analysts, strategists, and marketing teams, using a single metadata table to drive content library exploration and trend insights."
+  },
+  "similarity_pairs": [
+    {
+      "report_a": "Supermercato",
+      "report_b": "Netfix Workbook",
+      "score": 0.12,
+      "reason": "Business scopes are unrelated—one focuses on sales, operations, and compensation; the other on content catalog analysis. Data models are entirely incompatible: Supermercato uses relational sales, returns, and commission tables, while Netfix uses a flat catalog metadata table. KPIs, calculated fields, and visual structures serve different domains. Audience profiles do not overlap, with Supermercato targeting sales and operations teams, and Netfix aimed at content and marketing strategists."
+    }
+  ],
+  "groups": [
+    {
+      "verdict": "keep_separate",
+      "reports": [
+        "Supermercato"
+      ],
+      "shared": [],
+      "differences": [],
+      "merge_action": "",
+      "reason": "Supermercato is a sales and operations dashboard powered by supermarket transactional data, targeting performance improvement and compensation modeling. No overlap with the Netflix catalog analysis."
+    },
+    {
+      "verdict": "keep_separate",
+      "reports": [
+        "Netfix Workbook"
+      ],
+      "shared": [],
+      "differences": [],
+      "merge_action": "",
+      "reason": "Netfix Workbook analyzes streaming content metadata—genres, ratings, countries, and release years—for media catalog insights. It has no shared data model, KPIs, or audience with Supermercato."
+    }
+  ],
+  "narrative": "# Comparison Report\n\n## Executive Summary\nThe 'Supermercato' and 'Netfix Workbook' Tableau reports support two distinct business domains that cannot be consolidated into a single Power BI report. Each operates on fundamentally different data models, addresses separate business questions, and serves unique user audiences. As such, both must remain standalone in the migration strategy.\n\n## Report Profiles\n- **Supermercato:** This multi-dashboard workbook integrates supermarket sales performance, customer and product analysis, commission modeling, shipping metrics, and quota attainment. It leverages relational tables on orders, returns, and commissions, serving sales managers, finance, operations, and executives needing integrated performance management.\n- **Netfix Workbook:** This report centers on the Netflix content catalog, using a flat metadata structure to explore trends in titles, genres, ratings, countries, and durations. Its target users are content analysts and strategists concerned with catalog growth, diversification, and marketing insights.\n\n## Similarity Analysis\n- **Supermercato vs Netfix Workbook:**\n  - Score: 0.12\n  - Reason: There is no overlap on any of the five dimensions. Business scope, KPIs, and visual structures are unrelated. The Supermercato report uses operational and transactional sales tables with complex relationships, while Netfix is a single flat metadata table. Audiences belong to distinct business roles, and there is no structural or content compatibility.\n\n## Recommendations\nBoth reports are assigned to the 'keep_separate' group. Supermercato should migrate as its own Power BI report for retail sales and operations analytics. Netfix Workbook should remain as an independent Power BI report for media catalog analysis. There is no opportunity for merging or shared sectioning."
+}

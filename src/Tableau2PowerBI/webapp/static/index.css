@@ -97,6 +97,42 @@
   border-radius: 6px; padding: 3px 10px; color: var(--ink2);
 }
 
+/* ── Drop zone row: dz + brand icons ── */
+.dz-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+.dz-row .dz { flex: 1; }
+
+.dz-brand-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding-top: 16px;
+  flex-shrink: 0;
+}
+
+.dz-brand-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.dz-brand-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
 /* File preview */
 .file-preview {
   display: none; background: var(--violet-l); border: 1.5px solid var(--lilac);

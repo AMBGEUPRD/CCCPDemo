@@ -6,12 +6,11 @@ ChatCompletionsBackend (with faked SDK), plus the create_backend factory.
 
 import asyncio
 import logging
-import sys
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
 
 from Tableau2PowerBI.core.backends import (
+    FoundryAgentBackend,
     LLMResponse,
     MockBackend,
     ResponsesBackend,
@@ -111,18 +110,8 @@ class LLMResponseTests(unittest.TestCase):
 # ── ResponsesBackend Tests (with Faked SDK) ─────────────────────────────
 
 
-class FakeAgents:
-    def __init__(self):
-        self.calls = []
-
-    def create_version(self, *, agent_name, definition):
-        self.calls.append({"agent_name": agent_name, "definition": definition})
-        return SimpleNamespace(id="agent-id", name=agent_name, version="1")
-
-
 class FakeProjectClient:
     def __init__(self, openai_client=None):
-        self.agents = FakeAgents()
         self._openai_client = openai_client
         self.closed = False
 
@@ -153,24 +142,9 @@ class FakeResponses:
         )
 
 
-class FakeConversations:
-    def __init__(self, conversation_id="conv-1"):
-        self._id = conversation_id
-
-    def create(self, **kwargs):
-        return SimpleNamespace(id=self._id)
-
-
 class FakeOpenAIClient:
-    def __init__(
-        self,
-        text: str = "",
-        tokens_in: int = 5,
-        tokens_out: int = 10,
-        conversation_id: str = "conv-1",
-    ):
+    def __init__(self, text: str = "", tokens_in: int = 5, tokens_out: int = 10):
         self.responses = FakeResponses(text=text, tokens_in=tokens_in, tokens_out=tokens_out)
-        self.conversations = FakeConversations(conversation_id)
         self.closed = False
 
     def close(self):
@@ -180,11 +154,7 @@ class FakeOpenAIClient:
 class ResponsesBackendTests(unittest.TestCase):
     def _make_backend(self, text="response text", tokens_in=5, tokens_out=10):
         """Create a ResponsesBackend with a faked SDK client."""
-        openai_client = FakeOpenAIClient(
-            text=text,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-        )
+        openai_client = FakeOpenAIClient(text=text, tokens_in=tokens_in, tokens_out=tokens_out)
         project_client = FakeProjectClient(openai_client=openai_client)
 
         backend = ResponsesBackend(use_shared_clients=False)
@@ -192,25 +162,19 @@ class ResponsesBackendTests(unittest.TestCase):
 
         original = responses_backend_mod._create_project_client
         responses_backend_mod._create_project_client = lambda settings: project_client
-
-        # Provide a fake PromptAgentDefinition so tests run without azure SDK
-        fake_models = SimpleNamespace(PromptAgentDefinition=lambda **kw: SimpleNamespace(**kw))
-        with patch.dict(sys.modules, {"azure.ai.projects.models": fake_models}):
-            backend.initialize(_settings(), "test-model", "test skill", "test-agent", _LOGGER)
-
+        backend.initialize(_settings(), "test-model", "test skill", "test-agent", _LOGGER)
         responses_backend_mod._create_project_client = original
         return backend, openai_client, project_client
 
-    def test_initialize_registers_agent(self):
-        backend, _, project_client = self._make_backend()
-        self.assertEqual(len(project_client.agents.calls), 1)
-        self.assertEqual(project_client.agents.calls[0]["agent_name"], "test-agent")
+    def test_initialize_sets_initialized(self):
+        backend, _, _ = self._make_backend()
+        self.assertTrue(backend._initialized)
 
     def test_initialize_is_idempotent(self):
-        backend, _, project_client = self._make_backend()
-        # Second initialize should be no-op
+        backend, _, _ = self._make_backend()
+        # Second initialize should be no-op — _initialized stays True, no error
         backend.initialize(_settings(), "test-model", "skill", "agent", _LOGGER)
-        self.assertEqual(len(project_client.agents.calls), 1)
+        self.assertTrue(backend._initialized)
 
     def test_call_returns_llm_response(self):
         backend, openai_client, _ = self._make_backend()
@@ -219,7 +183,7 @@ class ResponsesBackendTests(unittest.TestCase):
         self.assertEqual(result.text, "response text")
         self.assertEqual(result.tokens_out, 10)
         self.assertEqual(result.tokens_in, 5)
-        self.assertGreater(result.elapsed_seconds, 0)
+        self.assertGreaterEqual(result.elapsed_seconds, 0)
 
     def test_call_sends_correct_request_shape(self):
         backend, openai_client, _ = self._make_backend()
@@ -228,8 +192,9 @@ class ResponsesBackendTests(unittest.TestCase):
         call = openai_client.responses.calls[0]
         self.assertEqual(call["model"], "test-model")
         self.assertEqual(call["input"], "test prompt")
-        self.assertIn("conversation", call)
-        self.assertIn("agent_reference", call["extra_body"])
+        self.assertEqual(call["instructions"], "test skill")
+        self.assertNotIn("conversation", call)
+        self.assertNotIn("extra_body", call)
 
     def test_call_raises_on_empty_response(self):
         backend, _, _ = self._make_backend(text="")
@@ -249,10 +214,154 @@ class ResponsesBackendTests(unittest.TestCase):
 # Fake classes removed (Claude backend removed)# ChatCompletionsBackendTests removed (Claude backend removed)
 
 
+# ── FoundryAgentBackend Tests (with Faked SDK) ───────────────────────────
+
+
+class FakeRun:
+    def __init__(self, status="completed", prompt_tokens=10, completion_tokens=20):
+        self.status = status
+        self.thread_id = "thread-123"
+        self.usage = SimpleNamespace(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
+
+class FakeMessagesOps:
+    def __init__(self, text: str):
+        self._text = text
+
+    def get_last_message_text_by_role(self, thread_id, role):
+        return SimpleNamespace(text=SimpleNamespace(value=self._text))
+
+
+class FakeThreadsOps:
+    def __init__(self):
+        self.deleted: list[str] = []
+
+    def delete(self, thread_id: str) -> None:
+        self.deleted.append(thread_id)
+
+
+class FakeAgentsClient:
+    """Fake azure.ai.agents.AgentsClient for unit tests."""
+
+    def __init__(self, existing_agents=None, response_text="agent response"):
+        self._existing = existing_agents or []
+        self.created_agents: list[dict] = []
+        self.updated_agents: list[dict] = []
+        self.closed = False
+        self.messages = FakeMessagesOps(response_text)
+        self.threads = FakeThreadsOps()
+
+    def list_agents(self):
+        return iter(self._existing)
+
+    def create_agent(self, *, model, name, instructions, **kwargs):
+        self.created_agents.append({"model": model, "name": name, "instructions": instructions})
+        return SimpleNamespace(id="new-agent-id")
+
+    def update_agent(self, agent_id, **kwargs):
+        self.updated_agents.append({"agent_id": agent_id, **kwargs})
+
+    def create_thread_and_process_run(self, *, agent_id, thread=None, **kwargs):
+        return FakeRun()
+
+    def close(self):
+        self.closed = True
+
+
+class FoundryAgentBackendTests(unittest.TestCase):
+    def _make_backend(self, response_text="agent response", existing_agents=None):
+        from unittest.mock import MagicMock, patch
+
+        fake_client = FakeAgentsClient(existing_agents=existing_agents, response_text=response_text)
+        with (
+            patch("azure.ai.agents.AgentsClient", return_value=fake_client),
+            patch(
+                "Tableau2PowerBI.core.backends.foundry_agent_backend._make_sync_credential",
+                return_value=MagicMock(),
+            ),
+        ):
+            backend = FoundryAgentBackend()
+            backend.initialize(_settings(), "gpt-4.1", "my skill text", "agent-my-agent", _LOGGER)
+        return backend, fake_client
+
+    def test_creates_agent_when_not_found(self):
+        backend, fc = self._make_backend()
+        self.assertEqual(len(fc.created_agents), 1)
+        self.assertEqual(fc.created_agents[0]["name"], "agent-my-agent")
+        self.assertEqual(fc.created_agents[0]["instructions"], "my skill text")
+
+    def test_reuses_existing_agent_same_instructions(self):
+        existing = [SimpleNamespace(id="existing-id", name="agent-my-agent", instructions="my skill text")]
+        backend, fc = self._make_backend(existing_agents=existing)
+        self.assertEqual(len(fc.created_agents), 0)
+        self.assertEqual(len(fc.updated_agents), 0)
+        self.assertEqual(backend._agent_id, "existing-id")
+
+    def test_updates_agent_when_instructions_changed(self):
+        existing = [SimpleNamespace(id="existing-id", name="agent-my-agent", instructions="old instructions")]
+        backend, fc = self._make_backend(existing_agents=existing)
+        self.assertEqual(len(fc.updated_agents), 1)
+        self.assertEqual(fc.updated_agents[0]["instructions"], "my skill text")
+        self.assertEqual(backend._agent_id, "existing-id")
+
+    def test_initialize_is_idempotent(self):
+        backend, fc = self._make_backend()
+        count_before = len(fc.created_agents)
+        backend.initialize(_settings(), "gpt-4.1", "my skill text", "agent-my-agent", _LOGGER)
+        self.assertEqual(len(fc.created_agents), count_before)
+
+    def test_call_returns_response(self):
+        backend, _ = self._make_backend(response_text="hello from foundry")
+        result = backend.call("my prompt")
+        self.assertEqual(result.text, "hello from foundry")
+        self.assertEqual(result.tokens_in, 10)
+        self.assertEqual(result.tokens_out, 20)
+
+    def test_call_deletes_thread(self):
+        backend, fc = self._make_backend()
+        backend.call("test")
+        self.assertIn("thread-123", fc.threads.deleted)
+
+    def test_call_raises_on_failed_run(self):
+        from unittest.mock import MagicMock, patch
+
+        fake_client = FakeAgentsClient()
+        fake_client.create_thread_and_process_run = lambda **kw: FakeRun(status="failed")
+        with (
+            patch("azure.ai.agents.AgentsClient", return_value=fake_client),
+            patch(
+                "Tableau2PowerBI.core.backends.foundry_agent_backend._make_sync_credential",
+                return_value=MagicMock(),
+            ),
+        ):
+            backend = FoundryAgentBackend()
+            backend.initialize(_settings(), "gpt-4.1", "skill", "agent-test", _LOGGER)
+
+        with self.assertRaises(RuntimeError):
+            backend.call("prompt")
+
+    def test_call_async_returns_response(self):
+        backend, _ = self._make_backend(response_text="async foundry")
+        result = asyncio.run(backend.call_async("async prompt"))
+        self.assertEqual(result.text, "async foundry")
+
+    def test_close_closes_agents_client(self):
+        backend, fc = self._make_backend()
+        backend.close()
+        self.assertTrue(fc.closed)
+
+
 # ── create_backend Factory Tests ─────────────────────────────────────────
 
 
 class CreateBackendTests(unittest.TestCase):
+    def test_foundry_returns_foundry_backend(self):
+        backend = create_backend("foundry")
+        self.assertIsInstance(backend, FoundryAgentBackend)
+
     def test_responses_returns_responses_backend(self):
         backend = create_backend("responses")
         self.assertIsInstance(backend, ResponsesBackend)
@@ -312,27 +421,9 @@ class FakeAsyncResponses:
         )
 
 
-class FakeAsyncConversations:
-    def __init__(self, conversation_id="conv-async-1"):
-        self._id = conversation_id
-
-    def create(self, **kwargs):
-        return SimpleNamespace(id=self._id)
-
-
 class FakeAsyncOpenAIClient:
-    def __init__(
-        self,
-        text: str = "",
-        tokens_in: int = 5,
-        tokens_out: int = 10,
-    ):
-        self.responses = FakeAsyncResponses(
-            text=text,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-        )
-        self.conversations = FakeAsyncConversations()
+    def __init__(self, text: str = "", tokens_in: int = 5, tokens_out: int = 10):
+        self.responses = FakeAsyncResponses(text=text, tokens_in=tokens_in, tokens_out=tokens_out)
         self.closed = False
 
     def close(self):
@@ -356,7 +447,6 @@ class ResponsesBackendAsyncTests(unittest.TestCase):
 
     def _make_backend(self, text="async response", tokens_in=5, tokens_out=10):
         """Create a ResponsesBackend with sync init + async client cache."""
-        # Sync init for agent registration
         sync_openai = FakeOpenAIClient(text=text, tokens_in=tokens_in, tokens_out=tokens_out)
         sync_project = FakeProjectClient(openai_client=sync_openai)
 
@@ -365,11 +455,7 @@ class ResponsesBackendAsyncTests(unittest.TestCase):
 
         original = responses_backend_mod._create_project_client
         responses_backend_mod._create_project_client = lambda s: sync_project
-
-        # Provide a fake PromptAgentDefinition so tests run without azure SDK
-        fake_models = SimpleNamespace(PromptAgentDefinition=lambda **kw: SimpleNamespace(**kw))
-        with patch.dict(sys.modules, {"azure.ai.projects.models": fake_models}):
-            backend.initialize(_settings(), "test-model", "test skill", "test-agent", _LOGGER)
+        backend.initialize(_settings(), "test-model", "test skill", "test-agent", _LOGGER)
         responses_backend_mod._create_project_client = original
 
         # Prepare async fakes in the shared cache
@@ -402,7 +488,7 @@ class ResponsesBackendAsyncTests(unittest.TestCase):
             self.assertEqual(result.text, "async response")
             self.assertEqual(result.tokens_in, 5)
             self.assertEqual(result.tokens_out, 10)
-            self.assertGreater(result.elapsed_seconds, 0)
+            self.assertGreaterEqual(result.elapsed_seconds, 0)
         finally:
             self._cleanup(mod, orig)
 

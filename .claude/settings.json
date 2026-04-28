@@ -25,7 +25,9 @@
       "Bash(mypy *)",
       "Bash(sphinx-build *)",
       "Bash(make *)",
-      "*"
+      "*",
+      "Read(*)",
+      "Write(*)"
     ],
     "defaultMode": "bypassPermissions"
   },

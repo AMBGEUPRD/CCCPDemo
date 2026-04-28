@@ -1,0 +1,268 @@
+/* ============================================================
+   compare.css — Comparison result page
+   ============================================================ */
+
+.compare-page { max-width: 960px; }
+
+/* ── Sections ──────────────────────────────────────────────────────────── */
+
+.compare-section {
+  margin-bottom: 36px;
+}
+
+.compare-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Running / Error states ────────────────────────────────────────────── */
+
+.cmp-spinner-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--violet-l);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cmp-spinner {
+  font-size: 20px;
+  color: var(--violet);
+  animation: spin 1.2s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.cmp-error-block {
+  background: var(--rose-l, #fff0f0);
+  border: 1px solid var(--rose);
+  border-radius: 10px;
+  padding: 20px 24px;
+  font-size: 14px;
+  color: var(--rose);
+}
+
+.cmp-error-block p { margin: 6px 0 0; }
+
+/* ── Executive summary card ────────────────────────────────────────────── */
+
+.compare-summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 22px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+/* ── Similarity matrix ─────────────────────────────────────────────────── */
+
+.matrix-wrap {
+  overflow-x: auto;
+}
+
+.similarity-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 100%;
+}
+
+.similarity-table th,
+.similarity-table td {
+  border: 1px solid var(--border);
+  padding: 7px 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mat-head {
+  background: var(--lavender-l);
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mat-label {
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  background: var(--lavender-l);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Matrix tabs ───────────────────────────────────────────────────────────── */
+
+.matrix-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.matrix-tab {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.matrix-tab:hover { border-color: var(--violet); color: var(--violet); }
+.matrix-tab.active {
+  background: var(--violet);
+  border-color: var(--violet);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Score cells ────────────────────────────────────────────────────────────── */
+
+.score-cell {
+  cursor: default;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.score-cell.diagonal { color: var(--muted); background: var(--lavender-l); }
+.score-cell[data-pair] { cursor: pointer; }
+.score-cell[data-pair]:hover { opacity: 0.8; outline: 2px solid var(--violet); }
+
+/* ── Legend ─────────────────────────────────────────────────────────────────── */
+
+.matrix-legend {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-label { font-family: var(--mono); }
+
+.legend-gradient {
+  display: inline-block;
+  width: 120px;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(to right, hsl(0,65%,88%), hsl(60,65%,79%), hsl(120,65%,70%));
+  flex-shrink: 0;
+}
+
+.legend-hint { color: var(--muted); font-style: italic; }
+
+/* ── Tooltip ───────────────────────────────────────────────────────────── */
+
+.score-tooltip {
+  position: absolute;
+  z-index: 200;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  max-width: 300px;
+  line-height: 1.5;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ── Recommendation cards ──────────────────────────────────────────────── */
+
+#recCards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rec-card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+}
+
+.rec-card.merge     { border-left-color: var(--green); }
+.rec-card.borderline { border-left-color: #f59e0b; }
+.rec-card.separate  { border-left-color: var(--muted); }
+
+.rec-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.rec-verdict-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rec-card.merge      .rec-verdict-label { color: var(--green); }
+.rec-card.borderline .rec-verdict-label { color: #b45309; }
+.rec-card.separate   .rec-verdict-label { color: var(--muted); }
+
+.rec-section {
+  margin-bottom: 12px;
+}
+
+.rec-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.rec-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.rec-section p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.merge-action-box {
+  background: var(--green-l);
+  border: 1px solid var(--green);
+  border-radius: 7px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.merge-action-box .rec-section-label { color: var(--green); }
+.merge-action-box p { color: var(--ink); }

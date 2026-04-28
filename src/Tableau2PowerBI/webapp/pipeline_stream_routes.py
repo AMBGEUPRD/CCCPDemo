@@ -10,7 +10,6 @@ import tempfile
 import traceback
 import uuid
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -29,121 +28,6 @@ from Tableau2PowerBI.webapp.runtime import (
     _sse_event,
     store_result,
 )
-
-PipelineTask = tuple[str, str, Callable[[], str]]
-IndexedPipelineTask = tuple[int, PipelineTask]
-
-
-def _partition_pipeline_phase3(
-    pipeline: list[PipelineTask],
-    phase3_ids: set[str],
-) -> tuple[list[IndexedPipelineTask], list[IndexedPipelineTask], list[IndexedPipelineTask]]:
-    """Split pipeline stages into pre-phase3, phase3-parallel, and post-phase3 segments."""
-    parallel = [(index, item) for index, item in enumerate(pipeline) if item[0] in phase3_ids]
-    if not parallel:
-        return list(enumerate(pipeline)), [], []
-
-    p3_min = min(index for index, _ in parallel)
-    p3_max = max(index for index, _ in parallel)
-    pre_parallel = [
-        (index, item) for index, item in enumerate(pipeline) if item[0] not in phase3_ids and index < p3_min
-    ]
-    post_parallel = [
-        (index, item) for index, item in enumerate(pipeline) if item[0] not in phase3_ids and index > p3_max
-    ]
-    return pre_parallel, parallel, post_parallel
-
-
-async def _run_parallel_phase3(
-    parallel: list[IndexedPipelineTask],
-    *,
-    total: int,
-    log_queue,
-    pipeline_results: list[dict],
-    logger: logging.Logger,
-) -> Any:
-    """Run phase-3 agents concurrently and stream progress events."""
-    if not parallel:
-        return
-
-    for idx, (agent_id, agent_label, _run_fn) in parallel:
-        yield _sse_event(
-            {
-                "agent_id": agent_id,
-                "agent_label": agent_label,
-                "index": idx,
-                "total": total,
-                "state": "running",
-            }
-        )
-
-    def _run_phase3_agent(agent_id: str, label: str, run_fn: Callable[[], str]) -> tuple[str, str, str]:
-        try:
-            result = run_fn()
-            return agent_id, "ok", result
-        except Exception as exc:
-            logger.error("%s failed: %s", label, exc)
-            return agent_id, "error", str(exc)
-
-    parallel_info: dict[str, tuple[int, str]] = {
-        agent_id: (idx, agent_label) for idx, (agent_id, agent_label, _run_fn) in parallel
-    }
-
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {
-            executor.submit(_run_phase3_agent, agent_id, agent_label, run_fn): agent_id
-            for _idx, (agent_id, agent_label, run_fn) in parallel
-        }
-        done_futures: set = set()
-        while len(done_futures) < len(futures):
-            await asyncio.sleep(0.3)
-            for event in _drain_log_queue(log_queue):
-                yield event
-
-            for future in list(futures):
-                if not future.done() or future in done_futures:
-                    continue
-
-                done_futures.add(future)
-                agent_id, status, result = future.result()
-                p_idx, p_label = parallel_info[agent_id]
-                if status == "ok":
-                    pipeline_results.append(
-                        {
-                            "agent_id": agent_id,
-                            "agent_label": p_label,
-                            "status": "ok",
-                            "result": _format_pipeline_result_for_display(result),
-                        }
-                    )
-                    yield _sse_event(
-                        {
-                            "agent_id": agent_id,
-                            "index": p_idx,
-                            "total": total,
-                            "state": "done",
-                        }
-                    )
-                    continue
-
-                error_msg = str(result)
-                pipeline_results.append(
-                    {
-                        "agent_id": agent_id,
-                        "agent_label": p_label,
-                        "status": "error",
-                        "result": error_msg,
-                    }
-                )
-                yield _sse_event(
-                    {
-                        "agent_id": agent_id,
-                        "index": p_idx,
-                        "total": total,
-                        "state": "error",
-                        "message": error_msg,
-                    }
-                )
 
 
 async def build_analyze_stream_response(
@@ -279,12 +163,8 @@ async def build_generate_stream_response(
     request: Request,
     *,
     metadata_extractor_cls,
+    functional_doc_agent_cls,
     target_technical_doc_cls,
-    skeleton_agent_cls,
-    semantic_model_agent_cls,
-    dax_measures_agent_cls,
-    report_visuals_agent_cls,
-    assembler_agent_cls,
     get_history_fn: Callable[[], Any],
     get_settings_fn: Callable[[], Any],
     compute_input_hash_fn,
@@ -295,8 +175,6 @@ async def build_generate_stream_response(
     body = await request.json()
     metadata_json = body.get("metadata_json", "")
     twb_path = body.get("twb_path", "")
-    semantic_model_name = body.get("semantic_model_name", "")
-    skip_tdd = body.get("skip_tdd", False)
     run_id = body.get("run_id") or None
     force_stages_list: list[str] | None = body.get("force_stages")
 
@@ -318,7 +196,6 @@ async def build_generate_stream_response(
         raise HTTPException(400, "twb_path is required to derive the workbook name")
 
     workbook_name = Path(twb_path).stem
-    semantic_model_name = semantic_model_name or workbook_name
 
     stages_to_run: set[str] | None = None
     manifest = None
@@ -330,18 +207,20 @@ async def build_generate_stream_response(
             force_set = set(force_stages_list) if force_stages_list else None
             webapp_generate_stages = {
                 "metadata_extractor",
+                "functional_doc",
                 "target_technical_doc",
-                "skeleton",
-                "semantic_model",
-                "dax_measures",
-                "report_visuals",
-                "assembler",
             }
             stages_to_run = resolve_stages_to_run_fn(
                 manifest,
                 current_hashes={
                     "metadata_extractor": compute_input_hash_fn(
                         [Path("data/input") / (manifest.workbook_file or Path(twb_path).name)]
+                    ),
+                    "functional_doc": compute_input_hash_fn(
+                        [
+                            get_output_dir("tableau_metadata_extractor_agent", workbook_name)
+                            / "functional_doc_input_slim.json"
+                        ]
                     ),
                     "target_technical_doc": compute_input_hash_fn(
                         [
@@ -350,24 +229,6 @@ async def build_generate_stream_response(
                             get_output_dir("tableau_metadata_extractor_agent", workbook_name) / "report_input.json",
                             get_output_dir("tableau_functional_doc_agent", workbook_name)
                             / "functional_documentation.json",
-                        ]
-                    ),
-                    "skeleton": compute_input_hash_fn([Path(twb_path)]),
-                    "semantic_model": compute_input_hash_fn(
-                        [get_output_dir("target_technical_doc_agent", workbook_name)]
-                    ),
-                    "dax_measures": compute_input_hash_fn(
-                        [get_output_dir("target_technical_doc_agent", workbook_name)]
-                    ),
-                    "report_visuals": compute_input_hash_fn(
-                        [get_output_dir("target_technical_doc_agent", workbook_name)]
-                    ),
-                    "assembler": compute_input_hash_fn(
-                        [
-                            get_output_dir("pbip_project_skeleton_agent", workbook_name),
-                            get_output_dir("pbip_semantic_model_generator_agent", workbook_name),
-                            get_output_dir("tmdl_measures_generator_agent", workbook_name),
-                            get_output_dir("pbir_report_generator_agent", workbook_name),
                         ]
                     ),
                 },
@@ -392,6 +253,19 @@ async def build_generate_stream_response(
         out.write_text(result, encoding="utf-8")
         return "Metadata re-extracted"
 
+    def _run_functional_doc() -> str:
+        fdd_out = get_output_dir("tableau_functional_doc_agent", workbook_name) / "functional_documentation.json"
+        if fdd_out.exists():
+            logger.info("FDD already exists — skipping regeneration")
+            return "Functional documentation already exists (reused)"
+        agent = functional_doc_agent_cls()
+        try:
+            agent.create()
+            agent.generate_documentation(workbook_name)
+            return "Functional documentation generated."
+        finally:
+            agent.close()
+
     def _run_tdd() -> str:
         tdd_dir = get_output_dir("target_technical_doc_agent", workbook_name)
         sm_path = tdd_dir / "semantic_model_design.json"
@@ -410,73 +284,22 @@ async def build_generate_stream_response(
             f"{len(tdd.report.pages)} pages"
         )
 
-    def _run_skeleton() -> str:
-        agent = skeleton_agent_cls()
-        output = agent.generate_pbip_project_skeleton(
-            workbook_name,
-            report_name=workbook_name,
-            semantic_model_name=semantic_model_name,
-        )
-        return str(output)
-
-    def _run_semantic_model() -> str:
-        agent = semantic_model_agent_cls()
-        agent.create()
-        agent.generate_pbip_semantic_model(workbook_name, semantic_model_name=semantic_model_name)
-        return "Semantic model generated."
-
-    def _run_dax_measures() -> str:
-        agent = dax_measures_agent_cls()
-        agent.create()
-        agent.generate_tmdl_measures(workbook_name)
-        return "DAX measures generated."
-
-    def _run_visuals() -> str:
-        agent = report_visuals_agent_cls()
-        agent.create()
-        agent.generate_pbir_report(workbook_name)
-        return "Visuals / report generated."
-
-    def _run_assembler() -> str:
-        agent = assembler_agent_cls()
-        output = agent.assemble_pbip_project(workbook_name)
-        return str(output)
-
     pipeline = [
         ("tableau_metadata_extractor", "Metadata Extraction", _run_metadata_extractor),
+        ("tableau_functional_doc", "Functional Documentation", _run_functional_doc),
         ("target_technical_doc", "Technical Design Document", _run_tdd),
-        ("pbip_project_skeleton", "Project Skeleton", _run_skeleton),
-        ("pbip_semantic_model_generator", "Semantic Model Generator", _run_semantic_model),
-        ("pbip_dax_generator", "DAX Generator", _run_dax_measures),
-        ("pbip_visuals_generator", "Visuals Generator", _run_visuals),
-        ("pbip_project_assembler", "Project Assembler", _run_assembler),
     ]
 
     agent_to_stage = {
         "tableau_metadata_extractor": "metadata_extractor",
+        "tableau_functional_doc": "functional_doc",
         "target_technical_doc": "target_technical_doc",
-        "pbip_project_skeleton": "skeleton",
-        "pbip_semantic_model_generator": "semantic_model",
-        "pbip_dax_generator": "dax_measures",
-        "pbip_visuals_generator": "report_visuals",
-        "pbip_project_assembler": "assembler",
     }
     stage_to_agent_dir = {
         "metadata_extractor": "tableau_metadata_extractor_agent",
+        "functional_doc": "tableau_functional_doc_agent",
         "target_technical_doc": "target_technical_doc_agent",
-        "skeleton": "pbip_project_skeleton_agent",
-        "semantic_model": "pbip_semantic_model_generator_agent",
-        "dax_measures": "tmdl_measures_generator_agent",
-        "report_visuals": "pbir_report_generator_agent",
-        "assembler": "pbip_project_assembler_agent",
     }
-
-    if skip_tdd:
-        pipeline = [
-            (agent_id, agent_label, run_fn)
-            for agent_id, agent_label, run_fn in pipeline
-            if agent_id not in ("target_technical_doc", "tableau_metadata_extractor")
-        ]
 
     skipped_agents: list[tuple[str, str]] = []
     if stages_to_run is not None:
@@ -491,12 +314,6 @@ async def build_generate_stream_response(
             for agent_id, agent_label, _ in original_pipeline
             if agent_to_stage.get(agent_id, agent_id) not in stages_to_run
         ]
-
-    phase3_ids = {
-        "pbip_semantic_model_generator",
-        "pbip_dax_generator",
-        "pbip_visuals_generator",
-    }
 
     async def _stream():
         pipeline_results: list[dict] = []
@@ -522,35 +339,7 @@ async def build_generate_stream_response(
                     }
                 )
 
-            pre_parallel, parallel, post_parallel = _partition_pipeline_phase3(pipeline, phase3_ids)
-
-            for idx, (agent_id, agent_label, run_fn) in pre_parallel:
-                async for event in _run_pipeline_stage(
-                    agent_id,
-                    agent_label,
-                    idx,
-                    total,
-                    run_fn,
-                    log_queue,
-                    pipeline_results,
-                    logger,
-                ):
-                    yield event
-
-            logger.info("[Phase 3] Running %d agents in parallel", len(parallel))
-            async for event in _run_parallel_phase3(
-                parallel,
-                total=total,
-                log_queue=log_queue,
-                pipeline_results=pipeline_results,
-                logger=logger,
-            ):
-                yield event
-
-            for event in _drain_log_queue(log_queue):
-                yield event
-
-            for idx, (agent_id, agent_label, run_fn) in post_parallel:
+            for idx, (agent_id, agent_label, run_fn) in enumerate(pipeline):
                 async for event in _run_pipeline_stage(
                     agent_id,
                     agent_label,

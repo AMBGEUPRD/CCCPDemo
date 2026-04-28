@@ -41,7 +41,7 @@ class ResponsesBackend:
     def __init__(self, use_shared_clients: bool = True) -> None:
         self._project_client: Any | None = None
         self._openai_client: Any | None = None
-        self._remote_agent: Any | None = None
+        self._initialized: bool = False
         self._settings: AgentSettings | None = None
         self._model: str = ""
         self._skill_text: str = ""
@@ -61,10 +61,8 @@ class ResponsesBackend:
         logger: logging.Logger,
     ) -> None:
         """Create project client, openai client, and register the agent."""
-        if self._remote_agent is not None:
+        if self._initialized:
             return  # idempotent
-
-        from azure.ai.projects.models import PromptAgentDefinition
 
         self._settings = settings
         self._model = model
@@ -82,20 +80,8 @@ class ResponsesBackend:
             )
             self._owns_clients = True
 
-        self._remote_agent = self._project_client.agents.create_version(
-            agent_name=agent_name,
-            definition=PromptAgentDefinition(
-                model=model,
-                instructions=skill_text,
-            ),
-        )
-
-        self._logger.debug(
-            "Agent created id=%s name=%s version=%s",
-            getattr(self._remote_agent, "id", None),
-            getattr(self._remote_agent, "name", None),
-            getattr(self._remote_agent, "version", None),
-        )
+        self._initialized = True
+        self._logger.debug("Backend initialized agent_name=%s model=%s", agent_name, model)
 
     def call(self, prompt: str) -> LLMResponse:
         """Send a prompt via the OpenAI Responses API (non-streaming).
@@ -107,27 +93,15 @@ class ResponsesBackend:
         ``AttributeError`` on every call.  Non-streaming bypasses the
         SDK stream parser entirely and works reliably.
         """
-        if self._openai_client is None or self._remote_agent is None:
+        if self._openai_client is None or not self._initialized:
             raise RuntimeError("Backend not initialized. Call initialize() first.")
-
-        conversation = self._openai_client.conversations.create(
-            metadata={"agent_name": self._agent_name},
-        )
-        self._logger.debug("Conversation created conversation_id=%s", conversation.id)
 
         request_kwargs = {
             "model": self._model,
             "input": prompt,
-            "conversation": {"id": conversation.id},
+            "instructions": self._skill_text,
             "metadata": {
                 "agent_name": self._agent_name,
-                "agent_version": str(getattr(self._remote_agent, "version", "")),
-            },
-            "extra_body": {
-                "agent_reference": {
-                    "name": self._remote_agent.name,
-                    "type": "agent_reference",
-                }
             },
         }
 
@@ -156,30 +130,17 @@ class ResponsesBackend:
 
     async def call_async(self, prompt: str) -> LLMResponse:
         """Async version of :meth:`call` using ``AsyncOpenAI``."""
-        if self._remote_agent is None or self._settings is None:
+        if not self._initialized or self._settings is None:
             raise RuntimeError("Backend not initialized. Call initialize() first.")
 
         _, async_openai = await shared_client_cache.get_or_create_async(self._settings)
 
-        conversation = async_openai.conversations.create(
-            metadata={"agent_name": self._agent_name},
-        )
-        if asyncio.iscoroutine(conversation):
-            conversation = await conversation
-
         request_kwargs = {
             "model": self._model,
             "input": prompt,
-            "conversation": {"id": conversation.id},
+            "instructions": self._skill_text,
             "metadata": {
                 "agent_name": self._agent_name,
-                "agent_version": str(getattr(self._remote_agent, "version", "")),
-            },
-            "extra_body": {
-                "agent_reference": {
-                    "name": self._remote_agent.name,
-                    "type": "agent_reference",
-                }
             },
         }
 

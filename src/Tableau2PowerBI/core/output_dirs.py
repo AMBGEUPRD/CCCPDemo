@@ -11,7 +11,9 @@ Provides:
 
 import json
 import logging
+import os
 import shutil
+import stat
 from pathlib import Path
 
 from Tableau2PowerBI.core.config import AgentSettings, get_agent_settings
@@ -73,6 +75,17 @@ def get_output_dir(agent_name: str, run_name: str, settings: AgentSettings | Non
     return runtime_settings.output_root / agent_name / run_name
 
 
+def _force_remove_readonly(func, path, _exc_info):
+    """onerror handler for shutil.rmtree: clear read-only bit and retry.
+
+    On Windows, extracted .twbx datasource files are often marked read-only,
+    causing rmtree to raise PermissionError. Stripping the flag lets the
+    deletion proceed.
+    """
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
 def reset_output_dir(output_dir: Path) -> None:
     """Delete *output_dir* if it exists and recreate it empty.
 
@@ -80,7 +93,7 @@ def reset_output_dir(output_dir: Path) -> None:
     stale files from previous runs never survive.
     """
     if output_dir.exists():
-        shutil.rmtree(output_dir)
+        shutil.rmtree(output_dir, onerror=_force_remove_readonly)
         logger.info("Cleaned stale output directory: %s", output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

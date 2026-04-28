@@ -99,41 +99,21 @@ class DownstreamResolutionTests(unittest.TestCase):
             stages={
                 "metadata_extractor": _completed_record(input_hash="extract-hash"),
                 "functional_doc": _completed_record(input_hash="func-hash"),
-                "skeleton": _completed_record(input_hash="skeleton-hash"),
                 "target_technical_doc": _completed_record(input_hash="tdd-hash"),
-                "semantic_model": _completed_record(input_hash="semantic-hash"),
-                "dax_measures": _completed_record(input_hash="dax-hash"),
-                "report_visuals": _completed_record(input_hash="visuals-hash"),
-                "assembler": _completed_record(input_hash="assembler-hash"),
             },
         )
 
     def test_get_stale_downstream_returns_transitive_dependents(self) -> None:
         stale = get_stale_downstream("metadata_extractor")
 
-        self.assertEqual(
-            stale,
-            {
-                "functional_doc",
-                "target_technical_doc",
-                "semantic_model",
-                "dax_measures",
-                "report_visuals",
-                "assembler",
-            },
-        )
+        self.assertEqual(stale, {"functional_doc", "target_technical_doc"})
 
     def test_resolve_stages_to_run_is_empty_when_everything_is_cached(self) -> None:
         manifest = self._completed_manifest()
         current_hashes = {
             "metadata_extractor": "extract-hash",
             "functional_doc": "func-hash",
-            "skeleton": "skeleton-hash",
             "target_technical_doc": "tdd-hash",
-            "semantic_model": "semantic-hash",
-            "dax_measures": "dax-hash",
-            "report_visuals": "visuals-hash",
-            "assembler": "assembler-hash",
         }
 
         stages = resolve_stages_to_run(manifest, current_hashes=current_hashes)
@@ -145,27 +125,14 @@ class DownstreamResolutionTests(unittest.TestCase):
         current_hashes = {
             "metadata_extractor": "changed",
             "functional_doc": "func-hash",
-            "skeleton": "skeleton-hash",
             "target_technical_doc": "tdd-hash",
-            "semantic_model": "semantic-hash",
-            "dax_measures": "dax-hash",
-            "report_visuals": "visuals-hash",
-            "assembler": "assembler-hash",
         }
 
         stages = resolve_stages_to_run(manifest, current_hashes=current_hashes)
 
         self.assertEqual(
             stages,
-            {
-                "metadata_extractor",
-                "functional_doc",
-                "target_technical_doc",
-                "semantic_model",
-                "dax_measures",
-                "report_visuals",
-                "assembler",
-            },
+            {"metadata_extractor", "functional_doc", "target_technical_doc"},
         )
 
     def test_force_stages_runs_only_needed_downstream(self) -> None:
@@ -176,14 +143,4 @@ class DownstreamResolutionTests(unittest.TestCase):
             force_stages={"functional_doc"},
         )
 
-        self.assertEqual(
-            stages,
-            {
-                "functional_doc",
-                "target_technical_doc",
-                "semantic_model",
-                "dax_measures",
-                "report_visuals",
-                "assembler",
-            },
-        )
+        self.assertEqual(stages, {"functional_doc", "target_technical_doc"})

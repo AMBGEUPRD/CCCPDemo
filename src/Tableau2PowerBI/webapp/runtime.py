@@ -143,7 +143,7 @@ async def _run_pipeline_stage(
                 "agent_id": agent_id,
                 "agent_label": agent_label,
                 "status": "ok",
-                "result": _coerce(result),
+                "result": _format_pipeline_result_for_display(result),
             }
         )
         yield _sse_event(

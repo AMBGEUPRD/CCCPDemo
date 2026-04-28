@@ -1,17 +1,10 @@
-"""End-to-end Tableau → Power BI migration pipeline.
+"""Tableau workbook analysis pipeline.
 
-Runs five phases with parallelism where safe:
+Runs three phases:
 
-Phase 0 — Extract metadata from a .twb/.twbx file                 (sequential)
-Phase 1 — Generate functional doc + project skeleton               (parallel)
-Phase 2 — Generate target technical documentation (TDD)            (sequential)
-Phase 3 — Generate semantic model, DAX measures, report visuals    (parallel)
-Phase 4 — Assemble the final PBIP project                          (sequential)
-
-Phases 1 and 3 use ``ThreadPoolExecutor`` because each agent spawns its
-own Azure SDK client and both the network I/O and the underlying calls
-release the GIL. The assembler in phase 4 is deterministic Python that
-merges outputs from phases 3 and 4.
+Phase 0 — Extract metadata from a .twb/.twbx file     (sequential)
+Phase 1 — Generate functional documentation            (sequential)
+Phase 2 — Generate target technical documentation      (sequential)
 """
 
 from __future__ import annotations
@@ -21,18 +14,12 @@ import json
 import logging
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from Tableau2PowerBI.agents.assembler import PBIPProjectAssemblerAgent
-from Tableau2PowerBI.agents.dax_measures import TmdlMeasuresGeneratorAgent
 from Tableau2PowerBI.agents.functional_doc import FunctionalDocAgent
 from Tableau2PowerBI.agents.metadata_extractor import TableauMetadataExtractorAgent
-from Tableau2PowerBI.agents.report_visuals import PbirReportGeneratorAgent
-from Tableau2PowerBI.agents.semantic_model import PBIPSemanticModelGeneratorAgent
-from Tableau2PowerBI.agents.skeleton import PBIPProjectSkeletonAgent
 from Tableau2PowerBI.agents.target_technical_doc import TargetTechnicalDocAgent
 from Tableau2PowerBI.core.backends import shared_client_cache
 from Tableau2PowerBI.core.config import AgentSettings, get_agent_settings
@@ -51,17 +38,15 @@ logger = logging.getLogger(__name__)
 
 StageCallable = Callable[[], Any]
 AsyncStageCallable = Callable[[], Awaitable[None]]
-ParallelTask = tuple[str, str, StageCallable]
 SyncAgentRunner = Callable[[Any], Any]
 AsyncAgentRunner = Callable[[Any], Awaitable[Any]]
 
 
 class MigrationPipeline:
-    """Orchestrates the full Tableau → PBIP conversion pipeline.
+    """Orchestrates the Tableau workbook analysis pipeline.
 
-    Encapsulates the eight-stage flow (extract → functional doc → TDD
-    → skeleton → semantic model → DAX measures → visuals → assemble)
-    with timing instrumentation and clean logging.
+    Runs three stages (extract → functional doc → TDD) and returns the
+    TDD output directory for downstream use.
 
     Usage::
 
@@ -72,12 +57,7 @@ class MigrationPipeline:
     _AGENT_DIR_MAP: dict[str, str] = {
         "metadata_extractor": "tableau_metadata_extractor_agent",
         "functional_doc": "tableau_functional_doc_agent",
-        "skeleton": "pbip_project_skeleton_agent",
         "target_technical_doc": "target_technical_doc_agent",
-        "semantic_model": "pbip_semantic_model_generator_agent",
-        "dax_measures": "tmdl_measures_generator_agent",
-        "report_visuals": "pbir_report_generator_agent",
-        "assembler": "pbip_project_assembler_agent",
     }
 
     def __init__(
@@ -149,22 +129,14 @@ class MigrationPipeline:
             stages_to_run,
         )
 
-        p1_tasks = [
-            (label, name, self._wrap_stage(name, fn, manifest))
-            for label, name, fn in [
-                ("P1a", "functional_doc", self._functional_doc),
-                ("P1b", "skeleton", self._skeleton),
-            ]
-            if name in stages_to_run
-        ]
-        if p1_tasks:
-            self._run_parallel_phase(
-                "P1",
-                "Functional documentation + project skeleton",
-                p1_tasks,
-            )
-        else:
-            logger.info("═══ Phase P1 skipped (cached) ═══")
+        self._run_managed_stage(
+            "P1",
+            "Functional documentation",
+            "functional_doc",
+            self._functional_doc,
+            manifest,
+            stages_to_run,
+        )
 
         self._run_managed_stage(
             "P2",
@@ -175,38 +147,7 @@ class MigrationPipeline:
             stages_to_run,
         )
 
-        p3_tasks = [
-            (label, name, self._wrap_stage(name, fn, manifest))
-            for label, name, fn in [
-                ("P3a", "semantic_model", self._semantic_model),
-                ("P3b", "dax_measures", self._dax_measures),
-                ("P3c", "report_visuals", self._visuals),
-            ]
-            if name in stages_to_run
-        ]
-        if p3_tasks:
-            self._run_parallel_phase(
-                "P3",
-                "Semantic model + DAX measures + report visuals",
-                p3_tasks,
-            )
-        else:
-            logger.info("═══ Phase P3 skipped (cached) ═══")
-
-        output_dir = self._run_managed_stage(
-            "P4",
-            "Assembling final PBIP project",
-            "assembler",
-            self._assemble,
-            manifest,
-            stages_to_run,
-        )
-        if output_dir is None:
-            output_dir = get_output_dir(
-                "pbip_project_assembler_agent",
-                self.workbook_name,
-                self.settings,
-            )
+        output_dir = get_output_dir("target_technical_doc_agent", self.workbook_name, self.settings)
 
         ran_stages = stages_to_run & set(STAGE_GRAPH.keys())
         if ran_stages:
@@ -245,17 +186,12 @@ class MigrationPipeline:
         else:
             logger.info("═══ P0 skipped (cached) ═══")
 
-        p1: dict[str, AsyncStageCallable] = {
-            "functional_doc": self._functional_doc_async,
-            "skeleton": lambda: asyncio.to_thread(self._skeleton),
-        }
-        await self._run_parallel_phase_async(
-            "P1",
-            "Functional doc + skeleton",
-            p1,
-            manifest,
-            stages_to_run,
-        )
+        if "functional_doc" in stages_to_run:
+            logger.info("═══ P1: Functional documentation ═══")
+            await self._functional_doc_async()
+            self._record_stage(manifest, "functional_doc")
+        else:
+            logger.info("═══ P1 skipped (cached) ═══")
 
         if "target_technical_doc" in stages_to_run:
             logger.info("═══ P2: Target technical documentation ═══")
@@ -264,30 +200,7 @@ class MigrationPipeline:
         else:
             logger.info("═══ P2 skipped (cached) ═══")
 
-        p3: dict[str, AsyncStageCallable] = {
-            "semantic_model": self._semantic_model_async,
-            "dax_measures": self._dax_measures_async,
-            "report_visuals": self._visuals_async,
-        }
-        await self._run_parallel_phase_async(
-            "P3",
-            "Semantic model + DAX + visuals",
-            p3,
-            manifest,
-            stages_to_run,
-        )
-
-        if "assembler" in stages_to_run:
-            logger.info("═══ P4: Assembling final PBIP project ═══")
-            output_dir = await asyncio.to_thread(self._assemble)
-            self._record_stage(manifest, "assembler")
-        else:
-            logger.info("═══ P4 skipped (cached) ═══")
-            output_dir = get_output_dir(
-                "pbip_project_assembler_agent",
-                self.workbook_name,
-                self.settings,
-            )
+        output_dir = get_output_dir("target_technical_doc_agent", self.workbook_name, self.settings)
 
         ran_stages = stages_to_run & set(STAGE_GRAPH.keys())
         if ran_stages:
@@ -321,62 +234,6 @@ class MigrationPipeline:
         if agent_dir:
             self._history.store_artifacts(manifest, agent_dir)
 
-    async def _run_parallel_phase_async(
-        self,
-        phase_label: str,
-        phase_description: str,
-        stage_map: dict[str, AsyncStageCallable],
-        manifest: RunManifest,
-        stages_to_run: set[str],
-    ) -> None:
-        """Run stages in *stage_map* concurrently using TaskGroup."""
-        to_run = {k: v for k, v in stage_map.items() if k in stages_to_run}
-        if not to_run:
-            logger.info("═══ Phase %s skipped (cached) ═══", phase_label)
-            return
-
-        logger.info("═══ Phase %s: %s ═══", phase_label, phase_description)
-        phase_start = time.monotonic()
-        errors: list[tuple[str, Exception]] = []
-        tasks: dict[str, asyncio.Task[None]] = {}
-
-        try:
-            async with asyncio.TaskGroup() as tg:
-                for name, coro_fn in to_run.items():
-                    logger.info("  ├─ Starting %s", name)
-                    tasks[name] = tg.create_task(coro_fn())
-        except* Exception as eg:
-            for exc in eg.exceptions:
-                for name, task in tasks.items():
-                    if task.done() and task.exception() is exc:
-                        errors.append((name, exc))
-                        break
-
-        for name, task in tasks.items():
-            if task.done() and not task.cancelled() and task.exception() is None:
-                logger.info("  ├─ %s completed", name)
-                self._record_stage(manifest, name)
-
-        for name, exc in errors:
-            logger.error("  ├─ %s FAILED: %s", name, exc)
-
-        elapsed = time.monotonic() - phase_start
-        logger.info(
-            "Phase %s completed in %.1fs (%d/%d tasks succeeded)",
-            phase_label,
-            elapsed,
-            len(to_run) - len(errors),
-            len(to_run),
-        )
-
-        if errors:
-            labels = ", ".join(lbl for lbl, _ in errors)
-            raise RuntimeError(
-                f"Phase {phase_label} failed — {len(errors)} task(s) errored: {labels}",
-            ) from errors[
-                0
-            ][1]
-
     async def _functional_doc_async(self) -> None:
         """Async Stage: Generate functional documentation."""
         await self._run_stage_with_agent_async(
@@ -390,33 +247,6 @@ class MigrationPipeline:
         await self._run_stage_with_agent_async(
             TargetTechnicalDocAgent,
             lambda tdd_agent: tdd_agent.generate_tdd_async(self.workbook_name),
-            create_agent=True,
-        )
-
-    async def _semantic_model_async(self) -> None:
-        """Async Stage: Generate the semantic model."""
-        await self._run_stage_with_agent_async(
-            PBIPSemanticModelGeneratorAgent,
-            lambda sm_agent: sm_agent.generate_pbip_semantic_model_async(
-                self.workbook_name,
-                semantic_model_name=self.semantic_model_name,
-            ),
-            create_agent=True,
-        )
-
-    async def _dax_measures_async(self) -> None:
-        """Async Stage: Generate DAX measures."""
-        await self._run_stage_with_agent_async(
-            TmdlMeasuresGeneratorAgent,
-            lambda dax_agent: dax_agent.generate_tmdl_measures_async(self.workbook_name),
-            create_agent=True,
-        )
-
-    async def _visuals_async(self) -> None:
-        """Async Stage: Generate PBIR report visuals."""
-        await self._run_stage_with_agent_async(
-            PbirReportGeneratorAgent,
-            lambda visuals_agent: visuals_agent.generate_pbir_report_async(self.workbook_name),
             create_agent=True,
         )
 
@@ -489,31 +319,6 @@ class MigrationPipeline:
             self.workbook_name,
             self.settings,
         )
-        tdd_dir = get_output_dir(
-            "target_technical_doc_agent",
-            self.workbook_name,
-            self.settings,
-        )
-        skeleton_dir = get_output_dir(
-            "pbip_project_skeleton_agent",
-            self.workbook_name,
-            self.settings,
-        )
-        semantic_model_dir = get_output_dir(
-            "pbip_semantic_model_generator_agent",
-            self.workbook_name,
-            self.settings,
-        )
-        dax_dir = get_output_dir(
-            "tmdl_measures_generator_agent",
-            self.workbook_name,
-            self.settings,
-        )
-        visuals_dir = get_output_dir(
-            "pbir_report_generator_agent",
-            self.workbook_name,
-            self.settings,
-        )
 
         return {
             "metadata_extractor": compute_input_hash([self.resolved_path]),
@@ -523,7 +328,6 @@ class MigrationPipeline:
                     extractor_dir / "report_input.json",
                 ]
             ),
-            "skeleton": compute_input_hash([self.resolved_path]),
             "target_technical_doc": compute_input_hash(
                 [
                     extractor_dir / "semantic_model_input.json",
@@ -531,42 +335,7 @@ class MigrationPipeline:
                     functional_doc_dir / "functional_documentation.json",
                 ]
             ),
-            "semantic_model": compute_input_hash([tdd_dir]),
-            "dax_measures": compute_input_hash([tdd_dir]),
-            "report_visuals": compute_input_hash([tdd_dir]),
-            "assembler": compute_input_hash(
-                [
-                    skeleton_dir,
-                    semantic_model_dir,
-                    dax_dir,
-                    visuals_dir,
-                ]
-            ),
         }
-
-    def _wrap_stage(self, stage_name: str, fn: StageCallable, manifest: RunManifest) -> StageCallable:
-        """Return a callable that runs *fn* and records completion."""
-        lock = self._manifest_lock
-
-        def _wrapped() -> Any:
-            stage_start = time.monotonic()
-            result = fn()
-            elapsed = time.monotonic() - stage_start
-            info = STAGE_GRAPH.get(stage_name)
-            with lock:
-                self._history.update_stage(
-                    manifest,
-                    stage_name,
-                    status=StageStatus.COMPLETED,
-                    duration_seconds=elapsed,
-                    deterministic=info.deterministic if info else True,
-                )
-                agent_dir = self._AGENT_DIR_MAP.get(stage_name)
-                if agent_dir:
-                    self._history.store_artifacts(manifest, agent_dir)
-            return result
-
-        return _wrapped
 
     def _log_combined_tokens(self, manifest: RunManifest) -> None:
         """Log token totals: manifest (skipped) + live (just ran)."""
@@ -607,14 +376,14 @@ class MigrationPipeline:
             return await runner(agent)
 
     def _extract(self) -> None:
-        """Stage 1: Parse the Tableau workbook into metadata JSON."""
+        """Stage P0: Parse the Tableau workbook into metadata JSON."""
         self._run_stage_with_agent(
             TableauMetadataExtractorAgent,
             lambda extractor: extractor.extract_tableau_metadata(str(self.resolved_path)),
         )
 
     def _functional_doc(self) -> None:
-        """Stage 2: Generate functional documentation of the workbook."""
+        """Stage P1: Generate functional documentation of the workbook."""
         self._run_stage_with_agent(
             FunctionalDocAgent,
             lambda doc_agent: doc_agent.generate_documentation(self.workbook_name),
@@ -622,56 +391,11 @@ class MigrationPipeline:
         )
 
     def _target_technical_doc(self) -> None:
-        """Stage 3: Generate target technical documentation."""
+        """Stage P2: Generate target technical documentation."""
         self._run_stage_with_agent(
             TargetTechnicalDocAgent,
             lambda tdd_agent: tdd_agent.generate_tdd(self.workbook_name),
             create_agent=True,
-        )
-
-    def _skeleton(self) -> None:
-        """Stage 4: Create the empty PBIP project scaffold."""
-        self._run_stage_with_agent(
-            PBIPProjectSkeletonAgent,
-            lambda skeleton_agent: skeleton_agent.generate_pbip_project_skeleton(
-                self.workbook_name,
-                report_name=self.workbook_name,
-                semantic_model_name=self.semantic_model_name,
-            ),
-        )
-
-    def _semantic_model(self) -> None:
-        """Stage 5: Call the LLM to generate the semantic model."""
-        self._run_stage_with_agent(
-            PBIPSemanticModelGeneratorAgent,
-            lambda sm_agent: sm_agent.generate_pbip_semantic_model(
-                self.workbook_name,
-                semantic_model_name=self.semantic_model_name,
-            ),
-            create_agent=True,
-        )
-
-    def _dax_measures(self) -> None:
-        """Stage 6: Call the LLM to generate DAX measures."""
-        self._run_stage_with_agent(
-            TmdlMeasuresGeneratorAgent,
-            lambda dax_agent: dax_agent.generate_tmdl_measures(self.workbook_name),
-            create_agent=True,
-        )
-
-    def _visuals(self) -> None:
-        """Stage 7: Call the LLM to generate PBIR report visuals."""
-        self._run_stage_with_agent(
-            PbirReportGeneratorAgent,
-            lambda visuals_agent: visuals_agent.generate_pbir_report(self.workbook_name),
-            create_agent=True,
-        )
-
-    def _assemble(self) -> Path:
-        """Stage 8: Merge pipeline outputs into the final PBIP project."""
-        return self._run_stage_with_agent(
-            PBIPProjectAssemblerAgent,
-            lambda assembler: assembler.assemble_pbip_project(self.workbook_name),
         )
 
     @staticmethod
@@ -683,58 +407,9 @@ class MigrationPipeline:
         logger.info("Stage %s completed in %.1fs", label, time.monotonic() - stage_start)
         return result
 
-    @staticmethod
-    def _run_parallel_phase(
-        phase_label: str,
-        phase_description: str,
-        tasks: list[ParallelTask],
-    ) -> None:
-        """Run multiple stages concurrently using ThreadPoolExecutor."""
-        logger.info("═══ Phase %s: %s ═══", phase_label, phase_description)
-        phase_start = time.monotonic()
-
-        errors: list[tuple[str, Exception]] = []
-        with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-            future_to_label: dict[Any, tuple[str, str]] = {}
-            for label, description, fn in tasks:
-                logger.info("  ├─ Starting %s: %s", label, description)
-                future = executor.submit(fn)
-                future_to_label[future] = (label, description)
-
-            for future in as_completed(future_to_label):
-                label, _description = future_to_label[future]
-                try:
-                    future.result()
-                    logger.info("  ├─ %s completed", label)
-                except Exception as exc:
-                    logger.error("  ├─ %s FAILED: %s", label, exc)
-                    errors.append((label, exc))
-
-        elapsed = time.monotonic() - phase_start
-        logger.info(
-            "Phase %s completed in %.1fs (%d/%d tasks succeeded)",
-            phase_label,
-            elapsed,
-            len(tasks) - len(errors),
-            len(tasks),
-        )
-
-        if errors:
-            labels = ", ".join(lbl for lbl, _ in errors)
-            raise RuntimeError(
-                f"Phase {phase_label} failed — {len(errors)} task(s) errored: {labels}",
-            ) from errors[
-                0
-            ][1]
-
 
 _MODEL_SHORT_NAMES: dict[str, str] = {
-    "semantic_model": "model_semantic_model",
-    "dax_measures": "model_dax_measures",
-    "report_visuals": "model_report_visuals",
     "target_technical_doc": "model_target_technical_doc",
-    "report_skeleton": "model_report_skeleton",
-    "report_page_visuals": "model_report_page_visuals",
     "functional_doc": "model_functional_doc",
     "warnings_reviewer": "model_warnings_reviewer",
 }
@@ -769,7 +444,7 @@ def run_pipeline(
     resume_run_id: str | None = None,
     force_stages: set[str] | None = None,
 ) -> Path:
-    """Run the full Tableau → PBIP conversion pipeline."""
+    """Run the Tableau workbook analysis pipeline."""
     pipeline = MigrationPipeline(
         twb_path,
         semantic_model_name,

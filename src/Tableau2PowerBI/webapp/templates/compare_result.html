@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Comparison — BIM-AI{% endblock %}
+{% block head_css %}
+<link rel="stylesheet" href="/static/projects.css" />
+<link rel="stylesheet" href="/static/compare.css" />
+{% endblock %}
+
+{% block nav_breadcrumb %}
+<div class="nav-breadcrumb">
+  <a href="/">Projects</a>
+  <span class="nav-sep">›</span>
+  <a href="#" id="breadcrumbProject"></a>
+  <span class="nav-sep">›</span>
+  <span id="breadcrumbCmp">Comparison</span>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="compare-page proj-page">
+
+  <!-- Header -->
+  <div class="proj-page-header">
+    <div>
+      <h1 class="proj-page-title" id="cmpTitle">Comparison Report</h1>
+      <p class="proj-page-sub" id="cmpMeta"></p>
+      <div class="comparison-chips" id="cmpChips" style="margin-top:8px"></div>
+    </div>
+    <div class="proj-header-actions">
+      <a class="btn-ghost btn-sm" id="backBtn" href="#">← Back</a>
+      <a class="btn-ghost btn-sm" id="exportMdBtn" href="#" style="display:none">Export MD</a>
+    </div>
+  </div>
+
+  <!-- Running state -->
+  <div id="cmpRunning" style="display:none">
+    <div class="cmp-spinner-block">
+      <span class="cmp-spinner">⟳</span>
+      <span>Comparison in progress… this may take a minute.</span>
+    </div>
+  </div>
+
+  <!-- Error state -->
+  <div id="cmpError" style="display:none">
+    <div class="cmp-error-block">
+      <strong>Comparison failed</strong>
+      <p id="cmpErrorMsg"></p>
+    </div>
+  </div>
+
+  <!-- Results (shown only when complete) -->
+  <div id="cmpResults" style="display:none">
+
+    <!-- Executive Summary -->
+    <div class="compare-section">
+      <h2 class="compare-section-title">Executive Summary</h2>
+      <div class="compare-summary-card" id="execSummary"></div>
+    </div>
+
+    <!-- Similarity Matrix -->
+    <div class="compare-section" id="matrixSection" style="display:none">
+      <h2 class="compare-section-title">Similarity Matrix</h2>
+      <div class="matrix-tabs" id="matrixTabs">
+        <button class="matrix-tab active" data-criterion="overall">Overall</button>
+        <button class="matrix-tab" data-criterion="business_scope">Business Scope</button>
+        <button class="matrix-tab" data-criterion="data_model">Data Model</button>
+        <button class="matrix-tab" data-criterion="measures_kpis">Measures &amp; KPIs</button>
+        <button class="matrix-tab" data-criterion="visual_structure">Visual Structure</button>
+        <button class="matrix-tab" data-criterion="target_audience">Target Audience</button>
+      </div>
+      <div class="matrix-wrap">
+        <table class="similarity-table" id="similarityTable"></table>
+      </div>
+      <div class="matrix-legend">
+        <span class="legend-label">0.0</span>
+        <span class="legend-gradient"></span>
+        <span class="legend-label">1.0</span>
+        <span class="legend-hint">Hover a cell for details</span>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="compare-section">
+      <h2 class="compare-section-title">Recommendations</h2>
+      <div id="recCards"></div>
+    </div>
+
+  </div>
+
+  <!-- Score tooltip -->
+  <div class="score-tooltip" id="scoreTooltip" style="display:none"></div>
+
+</div>
+{% endblock %}
+
+{% block scripts_shared %}{{ super() }}{% endblock %}
+
+{% block scripts %}
+<script src="/static/compare.js"></script>
+<script>initCompareResultPage();</script>
+{% endblock %}

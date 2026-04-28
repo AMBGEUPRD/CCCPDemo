@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}BIM-AI — My Projects{% endblock %}
+{% block head_css %}<link rel="stylesheet" href="/static/projects.css" />{% endblock %}
+
+{% block nav_badge %}<span class="nav-badge">Beta</span><div class="nav-spacer"></div>{% endblock %}
+
+{% block body %}
+<div class="proj-page">
+
+  <div class="proj-page-header">
+    <div>
+      <h1 class="proj-page-title">My Projects</h1>
+      <p class="proj-page-sub">Group Tableau workbooks into migration projects</p>
+    </div>
+    <button class="btn-primary" id="newProjectBtn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M7 2v10M2 7h10"/>
+      </svg>
+      New Project
+    </button>
+  </div>
+
+  <!-- Inline create-project form -->
+  <div class="new-proj-form" id="newProjForm" style="display:none" role="form" aria-label="Create project">
+    <input
+      class="new-proj-input"
+      id="projNameInput"
+      type="text"
+      placeholder="Project name…"
+      maxlength="80"
+      autocomplete="off"
+      aria-label="Project name"
+    />
+    <button class="btn-primary btn-sm" id="createProjBtn">Create</button>
+    <button class="btn-ghost btn-sm" id="cancelProjBtn">Cancel</button>
+    <span class="form-err" id="projFormErr" style="display:none"></span>
+  </div>
+
+  <!-- Project grid -->
+  <div id="projGrid" class="proj-grid"></div>
+
+  <!-- Empty state -->
+  <div id="projEmpty" class="proj-empty" style="display:none">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4">
+      <rect x="6" y="6" width="28" height="28" rx="4"/>
+      <path d="M6 14h28M14 34V14"/>
+    </svg>
+    <p>No projects yet.<br/>Click <strong>New Project</strong> to get started.</p>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_shared %}{{ super() }}{% endblock %}
+
+{% block scripts %}
+<script src="/static/projects.js"></script>
+<script>initProjectsPage();</script>
+{% endblock %}

@@ -637,7 +637,6 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
     var requestBody = {
       metadata_json: JSON.stringify(analysis),
       twb_path: session.filename || '',
-      skip_tdd: true,
     };
     if (runId) requestBody.run_id = runId;
 

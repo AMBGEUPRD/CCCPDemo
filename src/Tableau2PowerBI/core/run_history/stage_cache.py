@@ -67,9 +67,6 @@ class SkipDecision:
 
 
 # ── Stage dependency graph (authoritative) ───────────────────────────
-# Skeleton has NO upstream — it only needs string arguments.
-# Functional doc is optional in the webapp generate flow but
-# present in the CLI pipeline.
 STAGE_GRAPH: dict[str, StageInfo] = {
     "metadata_extractor": StageInfo(
         upstream=(),
@@ -79,34 +76,9 @@ STAGE_GRAPH: dict[str, StageInfo] = {
         upstream=("metadata_extractor",),
         deterministic=False,
     ),
-    "skeleton": StageInfo(
-        upstream=(),
-        deterministic=True,
-    ),
     "target_technical_doc": StageInfo(
         upstream=("metadata_extractor", "functional_doc"),
         deterministic=False,
-    ),
-    "semantic_model": StageInfo(
-        upstream=("target_technical_doc",),
-        deterministic=False,
-    ),
-    "dax_measures": StageInfo(
-        upstream=("target_technical_doc",),
-        deterministic=False,
-    ),
-    "report_visuals": StageInfo(
-        upstream=("target_technical_doc",),
-        deterministic=False,
-    ),
-    "assembler": StageInfo(
-        upstream=(
-            "skeleton",
-            "semantic_model",
-            "dax_measures",
-            "report_visuals",
-        ),
-        deterministic=True,
     ),
 }
 

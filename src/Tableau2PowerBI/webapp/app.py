@@ -16,13 +16,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from Tableau2PowerBI.agents.assembler import PBIPProjectAssemblerAgent
-from Tableau2PowerBI.agents.dax_measures import TmdlMeasuresGeneratorAgent
 from Tableau2PowerBI.agents.functional_doc import FunctionalDocAgent
 from Tableau2PowerBI.agents.metadata_extractor import TableauMetadataExtractorAgent
-from Tableau2PowerBI.agents.report_visuals import PbirReportGeneratorAgent
-from Tableau2PowerBI.agents.semantic_model import PBIPSemanticModelGeneratorAgent
-from Tableau2PowerBI.agents.skeleton import PBIPProjectSkeletonAgent
 from Tableau2PowerBI.agents.target_technical_doc import TargetTechnicalDocAgent
 from Tableau2PowerBI.agents.warnings_reviewer import WarningsReviewerAgent, collect_warnings
 from Tableau2PowerBI.core.config import get_agent_settings
@@ -121,12 +116,20 @@ async def no_cache_static(request: Request, call_next):
 
 
 from Tableau2PowerBI.webapp.history import router as history_router  # noqa: E402
+from Tableau2PowerBI.webapp.projects import router as projects_router  # noqa: E402
 
 app.include_router(history_router)
+app.include_router(projects_router)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    return templates.TemplateResponse(request, "projects.html")
+
+
+@app.get("/upload", response_class=HTMLResponse)
+async def upload_page(request: Request):
+    """Legacy standalone upload page (kept accessible from project detail or direct link)."""
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -150,6 +153,28 @@ async def generate_page(request: Request):
 @app.get("/warnings", response_class=HTMLResponse)
 async def warnings_page(request: Request):
     return templates.TemplateResponse(request, "warnings.html")
+
+
+@app.get("/projects/{project_name}", response_class=HTMLResponse)
+async def project_detail_page(request: Request, project_name: str):
+    """Serve the project detail page (named project with multiple reports)."""
+    from Tableau2PowerBI.webapp.history import _SAFE_NAME
+
+    if not project_name or not _SAFE_NAME.fullmatch(project_name):
+        raise HTTPException(400, f"Invalid project name: {project_name!r}")
+    return templates.TemplateResponse(request, "project_detail.html")
+
+
+@app.get("/projects/{project_name}/compare/{compare_id}", response_class=HTMLResponse)
+async def compare_result_page(request: Request, project_name: str, compare_id: str):
+    """Serve the comparison result page for a specific comparison run."""
+    from Tableau2PowerBI.webapp.history import _SAFE_NAME
+
+    if not project_name or not _SAFE_NAME.fullmatch(project_name):
+        raise HTTPException(400, f"Invalid project name: {project_name!r}")
+    if not compare_id or not re.fullmatch(r"cmp_[\w]+", compare_id):
+        raise HTTPException(400, f"Invalid compare_id: {compare_id!r}")
+    return templates.TemplateResponse(request, "compare_result.html")
 
 
 @app.get("/project/{workbook_name}", response_class=HTMLResponse)
@@ -219,12 +244,8 @@ async def generate_stream(request: Request):
         return await build_generate_stream_response(
             request,
             metadata_extractor_cls=TableauMetadataExtractorAgent,
+            functional_doc_agent_cls=FunctionalDocAgent,
             target_technical_doc_cls=TargetTechnicalDocAgent,
-            skeleton_agent_cls=PBIPProjectSkeletonAgent,
-            semantic_model_agent_cls=PBIPSemanticModelGeneratorAgent,
-            dax_measures_agent_cls=TmdlMeasuresGeneratorAgent,
-            report_visuals_agent_cls=PbirReportGeneratorAgent,
-            assembler_agent_cls=PBIPProjectAssemblerAgent,
             get_history_fn=_get_history,
             get_settings_fn=get_agent_settings,
             compute_input_hash_fn=compute_input_hash,

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Project — BIM-AI{% endblock %}
+{% block head_css %}<link rel="stylesheet" href="/static/projects.css" />{% endblock %}
+
+{% block nav_breadcrumb %}
+<div class="nav-breadcrumb">
+  <a href="/">Projects</a>
+  <span class="nav-sep">›</span>
+  <span id="breadcrumbName">…</span>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="proj-page">
+
+  <!-- Project header -->
+  <div class="proj-page-header">
+    <div>
+      <h1 class="proj-page-title" id="projTitle">Loading…</h1>
+      <p class="proj-page-sub" id="projMeta"></p>
+    </div>
+    <div class="proj-header-actions">
+      <button class="btn-compare" id="compareBtn" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 7h10M7 2l5 5-5 5"/><path d="M7 2L2 7l5 5"/>
+        </svg>
+        Compare
+      </button>
+      <button class="btn-primary" id="addReportBtn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M7 2v10M2 7h10"/>
+        </svg>
+        Add Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Upload zone (hidden until Add Report is clicked) -->
+  <div class="upload-zone" id="uploadZone" style="display:none" role="region" aria-label="Upload Tableau workbooks">
+    <div
+      class="dz-mini"
+      id="dzMini"
+      tabindex="0"
+      role="button"
+      aria-label="Drop .twb or .twbx files here"
+    >
+      <input type="file" id="dzInput" accept=".twb,.twbx" multiple style="display:none" />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--violet)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 18l6-6 6 6"/><path d="M14 12v10"/>
+        <path d="M22.5 17.5A4.5 4.5 0 0 0 18 13h-1.1A7.5 7.5 0 1 0 6 20"/>
+      </svg>
+      <div>
+        <div class="dz-mini-label">Drop <code>.twb</code> / <code>.twbx</code> files here or click to browse</div>
+        <div class="dz-mini-sub">Multiple files supported</div>
+      </div>
+    </div>
+
+    <!-- Multi-file preview list -->
+    <div id="dzFileList" class="dz-file-list" style="display:none"></div>
+
+    <div class="upload-actions">
+      <button class="btn-primary btn-sm" id="uploadBtn" disabled>Upload Reports</button>
+      <button class="btn-ghost btn-sm" id="cancelUploadBtn">Cancel</button>
+      <span class="form-err" id="uploadErr" style="display:none"></span>
+    </div>
+  </div>
+
+  <!-- Reports table -->
+  <div id="reportsSection" class="section-block">
+    <div id="reportsEmpty" class="reports-empty" style="display:none">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4">
+        <path d="M18 3H8a2 2 0 0 0-2 2v22a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9l-8-6z"/>
+        <path d="M18 3v6h6"/><path d="M12 17h8M12 21h5"/>
+      </svg>
+      <p>No reports yet. Click <strong>Add Report</strong> to upload Tableau workbooks.</p>
+    </div>
+    <div id="reportsList" class="reports-list"></div>
+  </div>
+
+  <!-- Comparisons history -->
+  <div id="comparisonsSection" class="section-block" style="margin-top:32px">
+    <div class="section-header">
+      <h2 class="section-title">Comparisons <span class="section-count" id="cmpCount"></span></h2>
+      <button class="btn-ghost btn-sm" id="newCompareBtn2">+ New Compare</button>
+    </div>
+    <div id="comparisonsList" class="comparisons-list"></div>
+    <div id="comparisonsEmpty" class="reports-empty" style="display:none">
+      <p>No comparisons yet. Select ≥ 2 completed reports and click <strong>Compare</strong>.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Compare modal -->
+<div class="modal-overlay" id="compareOverlay" style="display:none" role="dialog" aria-modal="true" aria-label="Compare reports">
+  <div class="modal compare-modal">
+    <div class="modal-header">
+      <h2>Compare Reports</h2>
+      <button class="btn-ghost btn-xs" id="compareModalClose">✕</button>
+    </div>
+    <p class="modal-desc">Select the reports you want to compare. At least 2 required.</p>
+
+    <div class="compare-actions-top">
+      <button class="btn-ghost btn-sm" id="compareSelectAll">Select All</button>
+      <button class="btn-ghost btn-sm" id="compareDeselectAll">Deselect All</button>
+    </div>
+
+    <div id="compareChecklist" class="compare-checklist"></div>
+
+    <div class="modal-footer">
+      <span class="compare-selection-hint" id="compareHint">Select at least 2 reports</span>
+      <button class="btn-ghost btn-sm" id="compareCancelBtn">Cancel</button>
+      <button class="btn-primary btn-sm" id="compareRunBtn" disabled>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 6.5h9M6.5 2l4.5 4.5L6.5 11"/>
+        </svg>
+        Compare
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_shared %}{{ super() }}{% endblock %}
+
+{% block scripts %}
+<script src="/static/projects.js"></script>
+<script>initProjectDetailPage();</script>
+{% endblock %}

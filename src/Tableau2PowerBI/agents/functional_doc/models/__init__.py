@@ -1,5 +1,6 @@
 """Pydantic models for the Functional Documentation Agent."""
 
+from Tableau2PowerBI.agents.functional_doc.models.consolidation_profile import ConsolidationProfile
 from Tableau2PowerBI.agents.functional_doc.models.cross_cutting_insights import CrossCuttingInsights
 from Tableau2PowerBI.agents.functional_doc.models.dashboard_doc import DashboardDoc
 from Tableau2PowerBI.agents.functional_doc.models.data_source_doc import DataSourceDoc
@@ -10,6 +11,7 @@ from Tableau2PowerBI.agents.functional_doc.models.workbook_summary import Workbo
 from Tableau2PowerBI.agents.functional_doc.models.worksheet_doc import WorksheetDoc
 
 __all__ = [
+    "ConsolidationProfile",
     "CrossCuttingInsights",
     "DashboardDoc",
     "DataSourceDoc",

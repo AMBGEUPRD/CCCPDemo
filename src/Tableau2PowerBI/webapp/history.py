@@ -152,10 +152,8 @@ async def restore_run(workbook_name: str, run_id: str) -> JSONResponse:
 
     # Suggest redirect based on pipeline progress
     completed_stages = {k for k, v in manifest.stages.items() if v.status.value == "completed"}
-    if "assembler" in completed_stages or len(completed_stages) > 2:
+    if "target_technical_doc" in completed_stages:
         redirect_to = f"/project/{workbook_name}"
-    elif "metadata_extractor" in completed_stages:
-        redirect_to = f"/results?id={result_id}"
     else:
         redirect_to = f"/results?id={result_id}"
 

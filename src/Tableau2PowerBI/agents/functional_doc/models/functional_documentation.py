@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from Tableau2PowerBI.agents.functional_doc.models.consolidation_profile import ConsolidationProfile
 from Tableau2PowerBI.agents.functional_doc.models.cross_cutting_insights import CrossCuttingInsights
 from Tableau2PowerBI.agents.functional_doc.models.dashboard_doc import DashboardDoc
 from Tableau2PowerBI.agents.functional_doc.models.data_source_doc import DataSourceDoc
@@ -20,6 +21,7 @@ class FunctionalDocumentation(BaseModel):
     """
 
     workbook_summary: WorkbookSummary
+    consolidation_profile: ConsolidationProfile = Field(default_factory=ConsolidationProfile)
     data_sources: list[DataSourceDoc] = Field(default_factory=list)
     dashboards: list[DashboardDoc] = Field(default_factory=list)
     standalone_worksheets: list[WorksheetDoc] = Field(default_factory=list)

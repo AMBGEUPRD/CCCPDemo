@@ -5,7 +5,14 @@ import uvicorn
 
 def main() -> None:
     """Start the FastAPI development server."""
-    uvicorn.run("Tableau2PowerBI.webapp.app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "Tableau2PowerBI.webapp.app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        reload_dirs=["src"],
+        reload_excludes=["*.pyc", ".venv/*", "data/*", "tests/*"],
+    )
 
 
 if __name__ == "__main__":

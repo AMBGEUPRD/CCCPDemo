@@ -1,8 +1,8 @@
 """Tests for pipeline run persistence and stage-cache skip logic.
 
 The pipeline converts Tableau workbooks to Power BI through a sequence
-of *stages* (metadata extraction → functional doc → skeleton → …
-→ assembler).  Two subsystems keep track of this:
+of *stages* (metadata extraction → functional doc → target technical doc).
+Two subsystems keep track of this:
 
 * **RunHistory** — CRUD for run manifests on the local filesystem.
   Each run records which stages completed, their input hashes, and the
@@ -415,8 +415,7 @@ class TestShouldSkipStage:
 # stage_cache — STAGE_GRAPH structure and downstream propagation
 #
 # Pipeline flow:
-#   metadata_extractor ──► functional_doc ──► target_technical_doc ──► SM / DAX / Visuals
-#   skeleton ──────────────────────────────────────────────────────► assembler ◄── SM + DAX + Visuals
+#   metadata_extractor ──► functional_doc ──► target_technical_doc
 # ═══════════════════════════════════════════════════════════════════
 
 
@@ -429,15 +428,8 @@ class TestStageGraph:
       re-generable) and whether outputs are byte-for-byte identical.
     """
 
-    def test_skeleton_has_no_upstream(self) -> None:
-        assert STAGE_GRAPH["skeleton"].upstream == ()
-
     def test_metadata_extractor_has_no_upstream(self) -> None:
         assert STAGE_GRAPH["metadata_extractor"].upstream == ()
-
-    def test_assembler_depends_on_phase3(self) -> None:
-        deps = set(STAGE_GRAPH["assembler"].upstream)
-        assert deps == {"skeleton", "semantic_model", "dax_measures", "report_visuals"}
 
     def test_tdd_depends_on_extractor_and_fdd(self) -> None:
         deps = set(STAGE_GRAPH["target_technical_doc"].upstream)
@@ -445,11 +437,6 @@ class TestStageGraph:
 
     def test_deterministic_flags(self) -> None:
         assert STAGE_GRAPH["metadata_extractor"].deterministic is True
-        assert STAGE_GRAPH["skeleton"].deterministic is True
-        assert STAGE_GRAPH["assembler"].deterministic is True
-        assert STAGE_GRAPH["semantic_model"].deterministic is False
-        assert STAGE_GRAPH["dax_measures"].deterministic is False
-        assert STAGE_GRAPH["report_visuals"].deterministic is False
         assert STAGE_GRAPH["functional_doc"].deterministic is False
         assert STAGE_GRAPH["target_technical_doc"].deterministic is False
 
@@ -464,34 +451,16 @@ class TestGetStaleDownstream:
 
     def test_metadata_extractor_invalidates_chain(self) -> None:
         ds = get_stale_downstream("metadata_extractor")
-        # Should include everything downstream
         assert "functional_doc" in ds
         assert "target_technical_doc" in ds
-        assert "semantic_model" in ds
-        assert "dax_measures" in ds
-        assert "report_visuals" in ds
-        assert "assembler" in ds
-        # NOT itself
         assert "metadata_extractor" not in ds
 
-    def test_skeleton_only_invalidates_assembler(self) -> None:
-        ds = get_stale_downstream("skeleton")
-        assert ds == {"assembler"}
+    def test_functional_doc_only_invalidates_tdd(self) -> None:
+        ds = get_stale_downstream("functional_doc")
+        assert ds == {"target_technical_doc"}
 
-    def test_tdd_invalidates_phase3_and_assembler(self) -> None:
+    def test_tdd_has_no_downstream(self) -> None:
         ds = get_stale_downstream("target_technical_doc")
-        assert "semantic_model" in ds
-        assert "dax_measures" in ds
-        assert "report_visuals" in ds
-        assert "assembler" in ds
-        assert "target_technical_doc" not in ds
-
-    def test_dax_measures_only_invalidates_assembler(self) -> None:
-        ds = get_stale_downstream("dax_measures")
-        assert ds == {"assembler"}
-
-    def test_assembler_has_no_downstream(self) -> None:
-        ds = get_stale_downstream("assembler")
         assert ds == set()
 
 
@@ -543,91 +512,70 @@ class TestResolveStages:
         assert result == set()
 
     def test_force_one_stage_also_reruns_its_downstream(self) -> None:
-        """Forcing dax_measures re-runs it + assembler (its only downstream),
-        but NOT sibling stages like semantic_model or report_visuals."""
+        """Forcing functional_doc re-runs it + target_technical_doc (its only downstream)."""
         m = self._completed_manifest()
-        result = resolve_stages_to_run(m, force_stages={"dax_measures"})
-        assert "dax_measures" in result
-        assert "assembler" in result
-        assert "semantic_model" not in result
-        assert "report_visuals" not in result
+        result = resolve_stages_to_run(m, force_stages={"functional_doc"})
+        assert "functional_doc" in result
+        assert "target_technical_doc" in result
+        assert "metadata_extractor" not in result
 
-    def test_force_tdd_cascades_through_all_downstream_stages(self) -> None:
-        """TDD feeds SM, DAX, and Visuals which all feed Assembler — all must re-run."""
+    def test_force_terminal_stage_runs_only_itself(self) -> None:
+        """Forcing target_technical_doc (last stage) re-runs only itself — no downstream."""
         m = self._completed_manifest()
         result = resolve_stages_to_run(m, force_stages={"target_technical_doc"})
-        expected = {
-            "target_technical_doc",
-            "semantic_model",
-            "dax_measures",
-            "report_visuals",
-            "assembler",
-        }
-        assert result == expected
+        assert result == {"target_technical_doc"}
 
     def test_pipeline_stages_constraint_limits_scope(self) -> None:
-        """The webapp generate flow passes a pipeline_stages set that
-        excludes functional_doc and metadata_extractor — verify that
-        resolve never returns stages outside that set."""
+        """A pipeline_stages constraint limits which stages can be returned.
+
+        When only the first two stages are allowed, target_technical_doc
+        must never appear in the result."""
         m = self._empty_manifest()
-        webapp_stages = {
-            "target_technical_doc",
-            "skeleton",
-            "semantic_model",
-            "dax_measures",
-            "report_visuals",
-            "assembler",
-        }
-        result = resolve_stages_to_run(m, pipeline_stages=webapp_stages)
-        assert "functional_doc" not in result
-        assert "metadata_extractor" not in result
-        assert result == webapp_stages
+        constrained_stages = {"metadata_extractor", "functional_doc"}
+        result = resolve_stages_to_run(m, pipeline_stages=constrained_stages)
+        assert "target_technical_doc" not in result
+        assert result == constrained_stages
 
     def test_failed_stage_is_retried(self) -> None:
         """A FAILED stage from a previous run must be re-executed."""
         m = self._completed_manifest()
-        m.stages["dax_measures"].status = StageStatus.FAILED
+        m.stages["functional_doc"].status = StageStatus.FAILED
         result = resolve_stages_to_run(m)
-        assert "dax_measures" in result
+        assert "functional_doc" in result
 
     def test_changed_hash_invalidates_stage_and_all_downstream(self) -> None:
-        """If TDD's input hash changed, it and everything downstream re-runs."""
+        """If functional_doc's input hash changed, it and target_technical_doc re-run."""
         m = self._completed_manifest()
         current_hashes = dict.fromkeys(STAGE_GRAPH, "h")  # all match…
-        current_hashes["target_technical_doc"] = "changed"  # …except TDD
+        current_hashes["functional_doc"] = "changed"  # …except functional_doc
         result = resolve_stages_to_run(m, current_hashes=current_hashes)
         assert result == {
+            "functional_doc",
             "target_technical_doc",
-            "semantic_model",
-            "dax_measures",
-            "report_visuals",
-            "assembler",
         }
 
     def test_force_on_partial_manifest_only_runs_forced(self) -> None:
-        """Force SM on a manifest with only metadata + TDD completed.
+        """Force TDD on a manifest with only metadata_extractor completed.
 
-        Should run ONLY semantic_model — not all incomplete stages.
-        Assembler should NOT trigger because its other upstreams
-        (dax_measures, report_visuals) are not completed.
+        Should run ONLY target_technical_doc — not all incomplete stages.
         """
         m = self._empty_manifest()
         m.stages["metadata_extractor"] = StageRecord(status=StageStatus.COMPLETED, input_hash="h")
-        m.stages["target_technical_doc"] = StageRecord(status=StageStatus.COMPLETED, input_hash="h")
-        result = resolve_stages_to_run(m, force_stages={"semantic_model"})
-        assert result == {"semantic_model"}
+        result = resolve_stages_to_run(m, force_stages={"target_technical_doc"})
+        assert result == {"target_technical_doc"}
 
-    def test_force_all_assembler_deps_triggers_assembler(self) -> None:
-        """Force SM + DAX + Visuals with skeleton completed → assembler fires."""
+    def test_force_upstream_triggers_qualifying_downstream(self) -> None:
+        """Forcing functional_doc with metadata completed also triggers target_technical_doc.
+
+        All of TDD's upstreams (metadata ✓, functional_doc forced) are satisfied,
+        so TDD is automatically added to the run set.
+        """
         m = self._empty_manifest()
-        for name in ("metadata_extractor", "functional_doc", "target_technical_doc", "skeleton"):
-            m.stages[name] = StageRecord(status=StageStatus.COMPLETED, input_hash="h")
-        result = resolve_stages_to_run(m, force_stages={"semantic_model", "dax_measures", "report_visuals"})
+        m.stages["metadata_extractor"] = StageRecord(status=StageStatus.COMPLETED, input_hash="h")
+        result = resolve_stages_to_run(m, force_stages={"functional_doc"})
         assert result == {
-            "semantic_model",
-            "dax_measures",
-            "report_visuals",
-            "assembler",
+            "functional_doc",
+            "target_technical_doc",
         }
 
 
