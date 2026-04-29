@@ -261,7 +261,7 @@
     var fddBtn = document.getElementById('generateFddBtn');
     var fddLabel = document.getElementById('fddBtnLabel');
     if (fddBtn && fddLabel) {
-      fddLabel.textContent = 'Regenerate FDD';
+      fddLabel.textContent = 'Regenerate Functional Design Doc';
       fddBtn.disabled = false;
       fddBtn.classList.remove('loading');
       fddBtn.classList.remove('fdd-done');
@@ -321,7 +321,7 @@
           var msg;
           try { msg = JSON.parse(dataLine.slice(5).trim()); } catch(e) { continue; }
           if (msg.state === 'complete') finalData = msg;
-          if (msg.state === 'error') throw new Error(msg.message || 'FDD generation failed');
+          if (msg.state === 'error') throw new Error(msg.message || 'Functional Design Document generation failed');
         }
       }
 
@@ -341,14 +341,14 @@
       showFddReady();
 
     } catch (err) {
-      if (label) label.textContent = 'Generate FDD';
+      if (label) label.textContent = 'Generate Functional Design Doc';
       btn.disabled = false;
       btn.classList.remove('loading');
       if (spinner) spinner.style.display = 'none';
       // Hide the loading section on error
       var fddSec = document.getElementById('fddSection');
       if (fddSec) fddSec.style.display = 'none';
-      alert('FDD generation failed: ' + err.message);
+      alert('Functional Design Document generation failed: ' + err.message);
     }
   });
 

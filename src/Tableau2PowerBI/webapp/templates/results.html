@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}BIM-AI — Migration Report{% endblock %}
+{% block title %}AI-driven Pulse for BI — Migration Report{% endblock %}
 {% block head_css %}
   <link rel="stylesheet" href="/static/results-shared.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -20,7 +20,7 @@
       <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2 2h6l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M8 2v3h3"/><path d="M4 8l2 2 3-3"/>
       </svg>
-      <span id="fddBtnLabel">Generate FDD</span>
+      <span id="fddBtnLabel">Generate Functional Design Doc</span>
       <div class="spinner-ring-sm" id="fddSpinner"></div>
     </button>
     <button class="nav-btn nav-btn--slate" id="copyRawBtn">
@@ -104,7 +104,7 @@
             </svg>
           </div>
           <div>
-            <div class="fdd-ready-title">Functional Documentation</div>
+            <div class="fdd-ready-title">Functional Design Document</div>
             <div class="fdd-ready-sub">Ready</div>
           </div>
         </div>
@@ -414,7 +414,7 @@
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.45">
           <path d="M18 4H8a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9l-5-5z"/><path d="M18 4v5h5"/><path d="M10 13h8M10 17h5"/>
         </svg>
-        <div style="font-size:13px;color:var(--muted)">Click "Generate FDD" in the nav bar to create functional documentation.</div>
+        <div style="font-size:13px;color:var(--muted)">Click 'Generate Functional Design Doc' in the nav bar to create functional documentation.</div>
       </div>
     </div>
 

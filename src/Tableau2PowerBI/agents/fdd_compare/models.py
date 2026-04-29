@@ -38,6 +38,25 @@ class ReportGroup(BaseModel):
     reason: str
 
 
+class KpiEntry(BaseModel):
+    """A single business KPI found across the portfolio."""
+
+    name: str
+    description: str
+    reports: list[str]  # report names that expose this KPI
+
+
+class RationalizationScore(BaseModel):
+    """Business value / usage scores and quadrant placement for one report."""
+
+    report: str
+    value: float = Field(ge=0.0, le=1.0)   # business value inferred from FDD
+    usage: float = Field(ge=0.0, le=1.0)   # estimated adoption (simulated)
+    quadrant: Literal["keep", "merge", "retire", "add"]
+    rationale: str
+    early_value: bool = False  # True when value >= 0.75 and usage >= 0.75
+
+
 class ComparisonResult(BaseModel):
     """Full output of the FDD comparison agent."""
 
@@ -46,3 +65,5 @@ class ComparisonResult(BaseModel):
     similarity_pairs: list[SimilarityPair] = Field(default_factory=list)
     groups: list[ReportGroup] = Field(default_factory=list)
     narrative: str = ""
+    kpi_glossary: list[KpiEntry] = Field(default_factory=list)
+    rationalization: list[RationalizationScore] = Field(default_factory=list)

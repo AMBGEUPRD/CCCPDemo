@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}BIM-AI — Tableau Migration{% endblock %}
+{% block title %}AI-driven Pulse for BI — Tableau Migration{% endblock %}
 {% block head_css %}<link rel="stylesheet" href="/static/index.css" />{% endblock %}
 
-{% block nav_badge %}<span class="nav-badge">Beta</span><div class="nav-spacer"></div>{% endblock %}
+{% block nav_badge %}{% endblock %}
 
 {% block body %}
 
@@ -16,17 +16,13 @@
     <div style="position:relative;z-index:1">
       <div class="card-title">Upload your workbook</div>
       <div class="card-sub">
-        Drop a
-        <code style="font-family:var(--mono);background:var(--violet-l);color:var(--violet);padding:1px 7px;border-radius:4px;font-size:12px">.twb</code>
-        or
-        <code style="font-family:var(--mono);background:var(--violet-l);color:var(--violet);padding:1px 7px;border-radius:4px;font-size:12px">.twbx</code>
-        file &mdash; max {{ upload_limit_mb }} MB
+        Drop a Tableau, Excel, Power BI or PowerPoint file &mdash; max {{ upload_limit_mb }} MB
       </div>
     </div>
 
     <div class="dz-row">
       <div class="dz" id="dz" data-upload-limit-bytes="{{ upload_limit_bytes }}" data-upload-limit-mb="{{ upload_limit_mb }}" tabindex="0" role="button" aria-label="Upload a Tableau workbook file">
-        <input type="file" id="fi" accept=".twb,.twbx" />
+        <input type="file" id="fi" accept=".twb,.twbx,.xlsx,.xls,.pbix,.pptx,.ppt" />
         <div class="dz-graphic">
           <div class="dz-graphic-bg">
             <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -40,8 +36,10 @@
         <div class="dz-title">Drop your file here</div>
         <div class="dz-sub">or click to browse your computer</div>
         <div class="dz-chips">
-          <span class="dz-chip">.twb</span>
-          <span class="dz-chip">.twbx</span>
+          <span class="dz-chip">Tableau</span>
+          <span class="dz-chip">Excel</span>
+          <span class="dz-chip">Power BI</span>
+          <span class="dz-chip">PowerPoint</span>
           <span class="dz-chip">max {{ upload_limit_mb }} MB</span>
         </div>
       </div>
@@ -49,12 +47,15 @@
         <!-- Tableau -->
         <div class="dz-brand-icon" title="Tableau">
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="14.5" y="2" width="3" height="28" rx="1.5" fill="#E97627"/>
-            <rect x="2" y="14.5" width="28" height="3" rx="1.5" fill="#E97627"/>
-            <rect x="10" y="6" width="2.5" height="20" rx="1.25" fill="#5B9BD5"/>
-            <rect x="6" y="10" width="20" height="2.5" rx="1.25" fill="#5B9BD5"/>
-            <rect x="19.5" y="6" width="2.5" height="20" rx="1.25" fill="#5B9BD5"/>
-            <rect x="6" y="19.5" width="20" height="2.5" rx="1.25" fill="#5B9BD5"/>
+            <rect x="6" y="3.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="3.5" y="6" width="5" height="2" rx="1" fill="#4E8F9C"/>
+            <rect x="15" y="1.5" width="2" height="5" rx="1" fill="#E97627"/><rect x="12.5" y="4" width="5" height="2" rx="1" fill="#E97627"/>
+            <rect x="24" y="3.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="21.5" y="6" width="5" height="2" rx="1" fill="#4E8F9C"/>
+            <rect x="3.75" y="12.5" width="2.5" height="7" rx="1.25" fill="#BE2134"/><rect x="1.5" y="15.25" width="7" height="2.5" rx="1.25" fill="#BE2134"/>
+            <rect x="13.5" y="11" width="5" height="10" rx="2.5" fill="#E97627"/><rect x="11" y="13.5" width="10" height="5" rx="2.5" fill="#E97627"/>
+            <rect x="26" y="12" width="2" height="6" rx="1" fill="#8B7BB5"/><rect x="24" y="14" width="6" height="2" rx="1" fill="#8B7BB5"/>
+            <rect x="6" y="22.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="3.5" y="25" width="5" height="2" rx="1" fill="#4E8F9C"/>
+            <rect x="14.75" y="23.5" width="2.5" height="7" rx="1.25" fill="#1B3A6B"/><rect x="12.5" y="26.25" width="7" height="2.5" rx="1.25" fill="#1B3A6B"/>
+            <rect x="24" y="22.5" width="2" height="5" rx="1" fill="#8B7BB5"/><rect x="21.5" y="25" width="5" height="2" rx="1" fill="#8B7BB5"/>
           </svg>
         </div>
         <!-- Power BI -->
@@ -70,6 +71,14 @@
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3" y="3" width="26" height="26" rx="4" fill="#217346"/>
             <path d="M9 10l4.5 6L9 22h3l3-4.5 3 4.5h3l-4.5-6 4.5-6h-3l-3 4.5-3-4.5H9z" fill="#fff"/>
+          </svg>
+        </div>
+        <!-- PowerPoint -->
+        <div class="dz-brand-icon" title="PowerPoint">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="4" fill="#C43E1C"/>
+            <rect x="8" y="9" width="16" height="14" rx="1" fill="white" opacity="0.12"/>
+            <text x="9" y="23" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="white">P</text>
           </svg>
         </div>
       </div>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Project — BIM-AI{% endblock %}
+{% block title %}Project — AI-driven Pulse for BI{% endblock %}
 {% block head_css %}<link rel="stylesheet" href="/static/projects.css" />{% endblock %}
 
 {% block nav_breadcrumb %}
@@ -42,16 +42,55 @@
       id="dzMini"
       tabindex="0"
       role="button"
-      aria-label="Drop .twb or .twbx files here"
+      aria-label="Drop Tableau, Excel, Power BI or PowerPoint files here"
     >
-      <input type="file" id="dzInput" accept=".twb,.twbx" multiple style="display:none" />
+      <input type="file" id="dzInput" accept=".twb,.twbx,.xlsx,.xls,.pbix,.pptx,.ppt" multiple style="display:none" />
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--violet)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 18l6-6 6 6"/><path d="M14 12v10"/>
         <path d="M22.5 17.5A4.5 4.5 0 0 0 18 13h-1.1A7.5 7.5 0 1 0 6 20"/>
       </svg>
       <div>
-        <div class="dz-mini-label">Drop <code>.twb</code> / <code>.twbx</code> files here or click to browse</div>
+        <div class="dz-mini-label">Drop files here or click to browse</div>
         <div class="dz-mini-sub">Multiple files supported</div>
+        <div class="dz-mini-brands">
+          <!-- Tableau -->
+          <div class="dz-brand-icon" title="Tableau">
+            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="3.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="3.5" y="6" width="5" height="2" rx="1" fill="#4E8F9C"/>
+              <rect x="15" y="1.5" width="2" height="5" rx="1" fill="#E97627"/><rect x="12.5" y="4" width="5" height="2" rx="1" fill="#E97627"/>
+              <rect x="24" y="3.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="21.5" y="6" width="5" height="2" rx="1" fill="#4E8F9C"/>
+              <rect x="3.75" y="12.5" width="2.5" height="7" rx="1.25" fill="#BE2134"/><rect x="1.5" y="15.25" width="7" height="2.5" rx="1.25" fill="#BE2134"/>
+              <rect x="13.5" y="11" width="5" height="10" rx="2.5" fill="#E97627"/><rect x="11" y="13.5" width="10" height="5" rx="2.5" fill="#E97627"/>
+              <rect x="26" y="12" width="2" height="6" rx="1" fill="#8B7BB5"/><rect x="24" y="14" width="6" height="2" rx="1" fill="#8B7BB5"/>
+              <rect x="6" y="22.5" width="2" height="5" rx="1" fill="#4E8F9C"/><rect x="3.5" y="25" width="5" height="2" rx="1" fill="#4E8F9C"/>
+              <rect x="14.75" y="23.5" width="2.5" height="7" rx="1.25" fill="#1B3A6B"/><rect x="12.5" y="26.25" width="7" height="2.5" rx="1.25" fill="#1B3A6B"/>
+              <rect x="24" y="22.5" width="2" height="5" rx="1" fill="#8B7BB5"/><rect x="21.5" y="25" width="5" height="2" rx="1" fill="#8B7BB5"/>
+            </svg>
+          </div>
+          <!-- Excel -->
+          <div class="dz-brand-icon" title="Excel">
+            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="26" height="26" rx="4" fill="#217346"/>
+              <path d="M9 10l4.5 6L9 22h3l3-4.5 3 4.5h3l-4.5-6 4.5-6h-3l-3 4.5-3-4.5H9z" fill="#fff"/>
+            </svg>
+          </div>
+          <!-- Power BI -->
+          <div class="dz-brand-icon" title="Power BI">
+            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3"  y="16" width="6" height="13" rx="2" fill="#F2C811"/>
+              <rect x="13" y="10" width="6" height="19" rx="2" fill="#F2C811" opacity=".85"/>
+              <rect x="23" y="4"  width="6" height="25" rx="2" fill="#F2C811" opacity=".7"/>
+            </svg>
+          </div>
+          <!-- PowerPoint -->
+          <div class="dz-brand-icon" title="PowerPoint">
+            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="4" fill="#C43E1C"/>
+              <rect x="8" y="9" width="16" height="14" rx="1" fill="white" opacity="0.12"/>
+              <text x="9" y="23" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="white">P</text>
+            </svg>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -80,12 +119,12 @@
   <!-- Comparisons history -->
   <div id="comparisonsSection" class="section-block" style="margin-top:32px">
     <div class="section-header">
-      <h2 class="section-title">Comparisons <span class="section-count" id="cmpCount"></span></h2>
-      <button class="btn-ghost btn-sm" id="newCompareBtn2">+ New Compare</button>
+      <h2 class="section-title">Report Comparisons <span class="section-count" id="cmpCount"></span></h2>
+      <button class="btn-ghost btn-sm" id="newCompareBtn2">+ New Report Comparison</button>
     </div>
     <div id="comparisonsList" class="comparisons-list"></div>
     <div id="comparisonsEmpty" class="reports-empty" style="display:none">
-      <p>No comparisons yet. Select ≥ 2 completed reports and click <strong>Compare</strong>.</p>
+      <p>No report comparisons yet. Select ≥ 2 completed reports and click <strong>Compare</strong>.</p>
     </div>
   </div>
 
@@ -95,7 +134,7 @@
 <div class="modal-overlay" id="compareOverlay" style="display:none" role="dialog" aria-modal="true" aria-label="Compare reports">
   <div class="modal compare-modal">
     <div class="modal-header">
-      <h2>Compare Reports</h2>
+      <h2>New Report Comparison</h2>
       <button class="btn-ghost btn-xs" id="compareModalClose">✕</button>
     </div>
     <p class="modal-desc">Select the reports you want to compare. At least 2 required.</p>

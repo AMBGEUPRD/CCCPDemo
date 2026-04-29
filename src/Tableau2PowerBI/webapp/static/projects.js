@@ -185,7 +185,7 @@ function initProjectDetailPage() {
     for (var i = 0; i < fileList.length; i++) {
       var f = fileList[i];
       var ext = f.name.split('.').pop().toLowerCase();
-      if (['twb', 'twbx'].includes(ext)) valid.push(f);
+      if (['twb', 'twbx', 'xlsx', 'xls', 'pbix', 'pptx', 'ppt'].includes(ext)) valid.push(f);
       else skipped.push(f.name);
     }
     if (skipped.length > 0) {
@@ -319,7 +319,7 @@ function initProjectDetailPage() {
       : '';
 
     var fddBtn = isDone
-      ? '<button class="btn-fdd btn-sm" data-workbook="' + _escHtml(report.workbook_name) + '" data-run="' + _escHtml(report.last_run_id || '') + '">FDD</button>'
+      ? '<button class="btn-fdd btn-sm" data-workbook="' + _escHtml(report.workbook_name) + '" data-run="' + _escHtml(report.last_run_id || '') + '">Func. Design Doc</button>'
       : '';
 
     row.innerHTML =
@@ -506,7 +506,7 @@ function initProjectDetailPage() {
               upsertStage(stagesEl, 'fdd', 'Functional Documentation', 'done');
             } else if (msg.state === 'error' || msg.step === 'error') {
               upsertStage(stagesEl, 'fdd', 'Functional Documentation', 'error');
-              onFddDone(workbookName, fddBtn, stagesEl, msg.message || 'FDD failed');
+              onFddDone(workbookName, fddBtn, stagesEl, msg.message || 'Func. Design Doc failed');
               return;
             }
           }
@@ -520,7 +520,7 @@ function initProjectDetailPage() {
   function onFddDone(workbookName, fddBtn, stagesEl, errMsg) {
     if (errMsg) {
       upsertStage(stagesEl, 'fdd', 'Functional Documentation', 'error');
-      if (fddBtn) { fddBtn.disabled = false; fddBtn.textContent = 'FDD'; }
+      if (fddBtn) { fddBtn.disabled = false; fddBtn.textContent = 'Func. Design Doc'; }
     } else {
       upsertStage(stagesEl, 'fdd', 'Functional Documentation', 'done');
       if (fddBtn) {
@@ -529,7 +529,7 @@ function initProjectDetailPage() {
         link.className = 'btn-fdd btn-sm btn-fdd-done';
         link.href = '/documentation/' + encodeURIComponent(workbookName) + '/html';
         link.target = '_blank';
-        link.textContent = 'View FDD';
+        link.textContent = 'View Func. Design Doc';
         fddBtn.replaceWith(link);
       }
     }

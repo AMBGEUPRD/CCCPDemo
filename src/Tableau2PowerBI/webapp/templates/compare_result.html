@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Comparison — BIM-AI{% endblock %}
+{% block title %}Report Comparison — AI-driven Pulse for BI{% endblock %}
 {% block head_css %}
 <link rel="stylesheet" href="/static/projects.css" />
 <link rel="stylesheet" href="/static/compare.css" />
@@ -11,7 +11,7 @@
   <span class="nav-sep">›</span>
   <a href="#" id="breadcrumbProject"></a>
   <span class="nav-sep">›</span>
-  <span id="breadcrumbCmp">Comparison</span>
+  <span id="breadcrumbCmp">Report Comparison</span>
 </div>
 {% endblock %}
 
@@ -21,7 +21,7 @@
   <!-- Header -->
   <div class="proj-page-header">
     <div>
-      <h1 class="proj-page-title" id="cmpTitle">Comparison Report</h1>
+      <h1 class="proj-page-title" id="cmpTitle">Report Comparison</h1>
       <p class="proj-page-sub" id="cmpMeta"></p>
       <div class="comparison-chips" id="cmpChips" style="margin-top:8px"></div>
     </div>
@@ -35,14 +35,14 @@
   <div id="cmpRunning" style="display:none">
     <div class="cmp-spinner-block">
       <span class="cmp-spinner">⟳</span>
-      <span>Comparison in progress… this may take a minute.</span>
+      <span>Report Comparison in progress… this may take a minute.</span>
     </div>
   </div>
 
   <!-- Error state -->
   <div id="cmpError" style="display:none">
     <div class="cmp-error-block">
-      <strong>Comparison failed</strong>
+      <strong>Report Comparison failed</strong>
       <p id="cmpErrorMsg"></p>
     </div>
   </div>
@@ -50,38 +50,158 @@
   <!-- Results (shown only when complete) -->
   <div id="cmpResults" style="display:none">
 
-    <!-- Executive Summary -->
-    <div class="compare-section">
-      <h2 class="compare-section-title">Executive Summary</h2>
-      <div class="compare-summary-card" id="execSummary"></div>
+    <!-- ACCORDION: Redundancy Map -->
+    <div class="cmp-accordion-item" id="accSimilarity">
+      <button class="cmp-accordion-header" aria-expanded="true">
+        <span>Redundancy Map</span>
+        <svg class="cmp-acc-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6l4 4 4-4"/>
+        </svg>
+      </button>
+      <div class="cmp-accordion-body open">
+
+        <!-- Executive Summary -->
+        <div class="compare-section">
+          <h2 class="compare-section-title">Executive Summary</h2>
+          <div class="compare-summary-card" id="execSummary"></div>
+        </div>
+
+        <!-- Similarity Matrix -->
+        <div class="compare-section" id="matrixSection" style="display:none">
+          <h2 class="compare-section-title">Redundancy Map</h2>
+          <div class="matrix-tabs" id="matrixTabs">
+            <button class="matrix-tab active" data-criterion="overall">Overall</button>
+            <button class="matrix-tab" data-criterion="business_scope">Business Scope</button>
+            <button class="matrix-tab" data-criterion="data_model">Data Model</button>
+            <button class="matrix-tab" data-criterion="measures_kpis">Measures &amp; KPIs</button>
+            <button class="matrix-tab" data-criterion="visual_structure">Visual Structure</button>
+            <button class="matrix-tab" data-criterion="target_audience">Target Audience</button>
+          </div>
+          <div class="matrix-wrap">
+            <table class="similarity-table" id="similarityTable"></table>
+          </div>
+          <div class="matrix-legend">
+            <span class="legend-label">Limited to NO overlap</span>
+            <span class="legend-gradient"></span>
+            <span class="legend-label">High to Complete overlap</span>
+            <span class="legend-hint">Hover a cell for details</span>
+          </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="compare-section" id="recSection">
+          <h2 class="compare-section-title">Recommendations</h2>
+          <div id="recCards"></div>
+        </div>
+
+      </div>
     </div>
 
-    <!-- Similarity Matrix -->
-    <div class="compare-section" id="matrixSection" style="display:none">
-      <h2 class="compare-section-title">Similarity Matrix</h2>
-      <div class="matrix-tabs" id="matrixTabs">
-        <button class="matrix-tab active" data-criterion="overall">Overall</button>
-        <button class="matrix-tab" data-criterion="business_scope">Business Scope</button>
-        <button class="matrix-tab" data-criterion="data_model">Data Model</button>
-        <button class="matrix-tab" data-criterion="measures_kpis">Measures &amp; KPIs</button>
-        <button class="matrix-tab" data-criterion="visual_structure">Visual Structure</button>
-        <button class="matrix-tab" data-criterion="target_audience">Target Audience</button>
-      </div>
-      <div class="matrix-wrap">
-        <table class="similarity-table" id="similarityTable"></table>
-      </div>
-      <div class="matrix-legend">
-        <span class="legend-label">0.0</span>
-        <span class="legend-gradient"></span>
-        <span class="legend-label">1.0</span>
-        <span class="legend-hint">Hover a cell for details</span>
+    <!-- ACCORDION: KPI Glossary -->
+    <div class="cmp-accordion-item" id="accKpi">
+      <button class="cmp-accordion-header" aria-expanded="false">
+        <span>KPI Glossary</span>
+        <svg class="cmp-acc-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6l4 4 4-4"/>
+        </svg>
+      </button>
+      <div class="cmp-accordion-body">
+        <div class="compare-section" id="kpiSection">
+          <h2 class="compare-section-title">KPI Glossary</h2>
+          <div class="kpi-table-wrap">
+            <table class="kpi-table" id="kpiTable"></table>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Recommendations -->
-    <div class="compare-section">
-      <h2 class="compare-section-title">Recommendations</h2>
-      <div id="recCards"></div>
+    <!-- ACCORDION: Rationalization Matrix -->
+    <div class="cmp-accordion-item" id="accRation">
+      <button class="cmp-accordion-header" aria-expanded="false">
+        <span>Rationalization Matrix</span>
+        <svg class="cmp-acc-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6l4 4 4-4"/>
+        </svg>
+      </button>
+      <div class="cmp-accordion-body">
+        <div class="compare-section" id="rationSection">
+          <h2 class="compare-section-title">Rationalization Matrix</h2>
+          <div class="ration-layout">
+            <div class="ration-axis-top">High usage</div>
+            <div class="ration-axis-left">Low value</div>
+            <div class="ration-matrix-area" id="rationMatrix">
+              <div class="ration-line-h"></div>
+              <div class="ration-line-v"></div>
+              <div class="ration-qlabel ration-q-merge">Merge</div>
+              <div class="ration-qlabel ration-q-keep">Keep</div>
+              <div class="ration-qlabel ration-q-retire">Retire</div>
+              <div class="ration-qlabel ration-q-add">Add</div>
+            </div>
+            <div class="ration-axis-right">High value</div>
+            <div class="ration-axis-bottom">Low usage</div>
+          </div>
+          <div class="ration-legend" id="rationLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCORDION: Notes -->
+    <div class="cmp-accordion-item" id="accNotes">
+      <button class="cmp-accordion-header" aria-expanded="false">
+        <span>Notes</span>
+        <svg class="cmp-acc-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6l4 4 4-4"/>
+        </svg>
+      </button>
+      <div class="cmp-accordion-body">
+        <div class="compare-section notes-section">
+          <h2 class="compare-section-title">Notes and Additional Context</h2>
+          <p class="notes-desc">Write or upload additional context for Reports regeneration or alignment.</p>
+
+          <textarea class="notes-textarea" id="notesText"
+            placeholder="Add notes, requirements, or observations…" rows="5"></textarea>
+
+          <div class="notes-upload-zone" id="notesUploadZone" tabindex="0" role="button"
+               aria-label="Upload supporting files">
+            <input type="file" id="notesFileInput"
+                   accept=".txt,.pdf,.docx,.xlsx,.csv,.png,.jpg,.jpeg,.gif,.svg,.pptx"
+                   multiple style="display:none" />
+            <div class="notes-upload-icons">
+              <div class="notes-file-type" title="Documents">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 3H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9l-7-6z"/>
+                  <path d="M16 3v6h6"/><path d="M10 13h8M10 17h5"/>
+                </svg>
+                <span>Text</span>
+              </div>
+              <div class="notes-file-type" title="Charts &amp; Data">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="12" width="5" height="13" rx="1"/>
+                  <rect x="11" y="7" width="5" height="18" rx="1"/>
+                  <rect x="19" y="3" width="5" height="22" rx="1"/>
+                </svg>
+                <span>Charts</span>
+              </div>
+              <div class="notes-file-type" title="Images">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="22" height="22" rx="3"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="M25 18l-7-7-8 8"/><path d="M17 20l-3-3-4 4"/>
+                </svg>
+                <span>Images</span>
+              </div>
+            </div>
+            <div class="notes-upload-label">Drop files here or click to browse</div>
+          </div>
+
+          <div id="notesFileList" class="notes-file-list"></div>
+
+          <div class="notes-actions">
+            <button class="btn-primary btn-sm" id="notesSaveBtn">Save Notes</button>
+            <span class="notes-saved-msg" id="notesSavedMsg" style="display:none">Saved ✓</span>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>

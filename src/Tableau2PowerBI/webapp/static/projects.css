@@ -483,6 +483,28 @@
   margin-top: 2px;
 }
 
+.dz-mini-brands {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.dz-mini .dz-brand-icon {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.dz-mini .dz-brand-icon:hover {
+  border-color: var(--violet);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.12);
+}
+
 .dz-file-list {
   display: flex;
   flex-direction: column;
